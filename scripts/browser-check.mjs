@@ -54,9 +54,44 @@ try{
  const game=await context.newPage();await game.goto('https://tenfour-poker.com/');
  await game.waitForFunction(()=>window.socket?.readyState===1);
  const state={tableId:'integration-table',buttonPosition:0,mySeatIndex:0,seats:[{playerName:'Hero',uid:'u1',chips:100,cards:['As','Ks']},{playerName:'SB',uid:'u2',chips:99.5},{playerName:'BB',uid:'u3',chips:99}],communityCards:[],isHandInProgress:true,actionHistory:['SB POST 0.5bb','BB POST 1bb'],token:'must-not-persist'};
- socket.send('42'+JSON.stringify(['fastFoldTableState',state]));
  const dashboard=await context.newPage();await dashboard.goto(`chrome-extension://${extensionId}/index.html`);
+ const notice=dashboard.getByRole('region',{name:'記録の受信状況'});
+ await notice.getByRole('heading',{name:'まだ受信を確認できていません',exact:true}).waitFor();
+ await notice.getByText('拡張機能の導入・更新後は、TenFourのページを再読み込みしてください。',{exact:true}).waitFor();
+ assert.equal(await notice.getByRole('link',{name:'TenFourを開く'}).getAttribute('href'),'https://tenfour-poker.com/');
+ await notice.getByRole('button',{name:'状態を更新'}).click();
+ await dashboard.setViewportSize({width:390,height:844});
+ assert.ok(await dashboard.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ await dashboard.screenshot({path:'artifacts/recorder-first-run.png',fullPage:true});
+ await dashboard.setViewportSize({width:1280,height:900});
+ socket.send('42'+JSON.stringify(['fastFoldTableState',state]));
  await dashboard.getByRole('heading',{name:'table:integration-table',exact:true}).waitFor({timeout:15000});
+ await notice.getByRole('heading',{name:'データ受信中',exact:true}).waitFor();
+ // Exercise the distinction between a quiet connection, pause and a saving error.
+ const patchRecorder=async patch=>{
+   await worker.evaluate(async patch=>{
+     const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('tenfour-analyzer-v1');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+     try{await new Promise((resolve,reject)=>{const tx=db.transaction('meta','readwrite'),store=tx.objectStore('meta'),r=store.get('status');r.onsuccess=()=>store.put({...r.result,...patch},'status');tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);});}finally{db.close();}
+   },patch);
+   await dashboard.reload();
+ };
+ await patchRecorder({lastSeen:Date.now()-30000});
+ await notice.getByRole('heading',{name:'新しいデータを待っています',exact:true}).waitFor();
+ await notice.getByText('記録されないときの確認手順',{exact:true}).click();
+ await notice.getByRole('button',{name:'状態を更新'}).waitFor();
+ await patchRecorder({enabled:false});
+ await notice.getByRole('heading',{name:'記録停止中',exact:true}).waitFor();
+ assert.equal(await notice.getByRole('link',{name:'TenFourを開く'}).count(),0);
+ await notice.getByRole('button',{name:'記録を再開する'}).click();
+ await notice.getByRole('heading',{name:'新しいデータを待っています',exact:true}).waitFor();
+ await patchRecorder({error:'テスト用保存エラー',lastSeen:Date.now()});
+ await notice.getByRole('heading',{name:'保存エラー',exact:true}).waitFor();
+ assert.equal(await dashboard.locator('.record-indicator.live').count(),0);
+ await patchRecorder({error:null,lastSeen:0});
+ await notice.getByRole('heading',{name:'まだ受信を確認できていません',exact:true}).waitFor();
+ await patchRecorder({lastSeen:Date.now()});
+ await notice.getByRole('heading',{name:'データ受信中',exact:true}).waitFor();
+ console.log('PASS: first-run reload instructions, mobile layout, reception, idle help, pause/resume and saving-error status');
  assert.equal(await game.evaluate(()=>received.length),1);
  const raw=await worker.evaluate(async()=>{const req=indexedDB.open('tenfour-analyzer-v1',1);const db=await new Promise((r,j)=>{req.onsuccess=()=>r(req.result);req.onerror=j;});const store=db.transaction('events').objectStore('events');const get=store.getAll();return new Promise((r,j)=>{get.onsuccess=()=>r(JSON.stringify(get.result));get.onerror=j;});});
  assert.ok(!raw.includes('must-not-persist'));assert.ok(raw.includes('integration-table'));
@@ -105,7 +140,7 @@ try{
  await game.evaluate(()=>fetch('https://game.tenfour-poker.com/api/hand/browser-fast-fold').then(r=>r.json()));
  await dashboard.getByText('履歴で補完済み',{exact:true}).waitFor();
  await dashboard.getByRole('button',{name:'このハンドを出力',exact:true}).click();
- assert.match(await dashboard.getByLabel('ハンド履歴テキスト（1件）').inputValue(),/Uncalled bet \(\$2\) returned to Player5/);
+ assert.match(await dashboard.getByLabel('ハンド履歴テキスト（1件）').inputValue(),/Uncalled bet \(\$2\.00\) returned to Player5/);
  await dashboard.getByRole('dialog').getByRole('button',{name:'閉じる',exact:true}).click();
  // Drive disconnect/reconnect through native WebSocket events and a fresh capture connection.
  socket.send('42'+JSON.stringify(['fastFoldTableState',{...state,tableId:'browser-reconnect'}]));

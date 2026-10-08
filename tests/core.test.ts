@@ -52,7 +52,7 @@ test('unmatched check / over-stack raise / folded winner fail validation',()=>{
 });
 test('PokerStars exporter uses raise increment, refunds, stable IDs and aliases',async()=>{
  const h=demoHands()[0],text=await pokerstars(h);
- assert.match(text,/Hero: raises \$1.5 to \$2.5/);assert.match(text,/Uncalled bet \(\$2\) returned to Hero/);assert.match(text,/Total pot \$5.5 \| Rake \$0.27/);
+ assert.match(text,/Hero: raises \$1\.50 to \$2\.50/);assert.match(text,/Uncalled bet \(\$2\.00\) returned to Hero/);assert.match(text,/Total pot \$5\.50 \| Rake \$0.27/);
  assert.equal(await pokerstars(h),text);assert.match(text,/Dealt to Hero \[As Ks\]/);assert.doesNotMatch(text,/undefined|NaN/);
 });
 test('replay calculates pot and remaining stack before settlement',()=>{
@@ -69,7 +69,7 @@ test('complete live snapshot reconciles chips and results, returns unmatched bet
  const final={...start,isHandInProgress:false,communityCards:[],actionHistory:['SB POST 0.5bb','BB POST 1bb','BTN RAISE 3bb','SB FOLD','BB FOLD'],seats:[{...start.seats[0],chips:101.5},{...start.seats[1],chips:99.5},{...start.seats[2],chips:99}],handResults:[{seatIndex:0,profit:1.5,isWinner:true},{seatIndex:1,profit:-0.5,isWinner:false},{seatIndex:2,profit:-1,isWinner:false}]};
  const h=fromSnapshot(capture(final),first)!;
  assert.equal(h.status,'complete');assert.equal(h.actions.at(-1)?.kind,'return');assert.equal(h.actions.at(-1)?.amount,200);assert.deepEqual(validateHand(h),[]);
- const text=await pokerstars(h);assert.match(text,/Hero collected \$2.5 from pot/);
+ const text=await pokerstars(h);assert.match(text,/Hero collected \$2\.50 from pot/);
  const bad=structuredClone(final);bad.seats[0].chips=999;assert.ok(validateHand(fromSnapshot(capture(bad),first)!).some(e=>e.includes('終了スタック')));
 });
 test('missing check, out-of-order actions and under-minimum raises are rejected',()=>{

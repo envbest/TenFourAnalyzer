@@ -24,8 +24,8 @@ test('rank evaluator covers every category, wheel straights, kickers and board t
 test('unequal all-ins create main and side pots with explicit awards in export',async()=>{
  const h=allIn();assert.deepEqual(validateHand(h),[]);
  const {pots}=settlementPots(h);assert.deepEqual(pots.map(p=>p.amount),[15000,10000]);assert.deepEqual(pots[1].eligible,[1,2]);
- const text=await pokerstars(h);assert.match(text,/Hero collected \$150 from main pot/);assert.match(text,/Player2 collected \$100 from side pot/);assert.match(text,/3-max/);
- assert.match(text,/Main pot \$150\. Side pot \$100\./);
+ const text=await pokerstars(h);assert.match(text,/Hero collected \$150\.00 from main pot/);assert.match(text,/Player2 collected \$100\.00 from side pot/);assert.match(text,/3-max/);
+ assert.match(text,/Main pot \$150\.00\. Side pot \$100\.00\./);
  h.rake=200;h.payouts[0].amount-=100;h.payouts[1].amount-=100;h.profit=h.profit!-100;
  assert.deepEqual(validateHand(h),[]);assert.deepEqual(settlementPots(h).pots.map(p=>p.rake),[100,100]);
 });

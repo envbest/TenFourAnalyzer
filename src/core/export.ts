@@ -1,6 +1,21 @@
-import { money, type Hand, type Street } from './types';
+import { type Hand, type Street } from './types';
 import { validateBettingOrder } from './betting';
-import {settlementPots} from './pots';
+import {settlementPots,rankSeven} from './pots';
+
+function describeHand(cards:string[]):string {
+  const rank=rankSeven(cards);if(rank===null)throw new Error('役を判定できません');
+  const digits=Array.from({length:6},(_,i)=>Math.floor(rank/15**(5-i))%15);
+  const names=['','','Deuce','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Jack','Queen','King','Ace'];
+  const plurals=['','','Deuces','Threes','Fours','Fives','Sixes','Sevens','Eights','Nines','Tens','Jacks','Queens','Kings','Aces'];
+  const [category,high,second]=digits;
+  return [`high card ${names[high]}`,`a pair of ${plurals[high]}`,`two pair, ${plurals[high]} and ${plurals[second]}`,`three of a kind, ${plurals[high]}`,`a straight, ${names[high]} high`,`a flush, ${names[high]} high`,`a full house, ${plurals[high]} full of ${plurals[second]}`,`four of a kind, ${plurals[high]}`,high===14?'a Royal Flush':`a straight flush, ${names[high]} high`][category];
+}
+
+function easternDate(at:number):string {
+  const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(at);
+  const value=(type:string)=>parts.find(p=>p.type===type)!.value;
+  return `${value('year')}/${value('month')}/${value('day')} ${value('hour')}:${value('minute')}:${value('second')}`;
+}
 export function validateHand(h:Hand):string[]{
   const errors=[...h.issues,...validateBettingOrder(h)];const add=(s:string)=>errors.push(s);
   if(h.status!=='complete')add('ハンドが完了していません');
@@ -57,13 +72,13 @@ export function validateHand(h:Hand):string[]{
 }
 export async function pokerstars(h:Hand):Promise<string>{
   const issues=validateHand(h);if(issues.length)throw new Error(issues.join('\n'));
-  // Stable 60-bit numeric ID, namespaced to avoid reusing IDs from another poker site.
+  // Stable 52-bit ID: exact in JavaScript and within signed 64-bit parser limits.
   const hash=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(`TenFour:${h.mode}:${h.sourceId}`)));
-  const id=BigInt('0x'+Array.from(hash.slice(0,8),n=>n.toString(16).padStart(2,'0')).join('')).toString();
+  const id=BigInt('0x'+Array.from(hash.slice(0,7),n=>n.toString(16).padStart(2,'0')).join('').slice(0,13)).toString();
   const name=(seat:number)=>seat===h.heroSeat?'Hero':`Player${seat+1}`;
-  const amount=(n:number)=>money(n).replaceAll(',','');
+  const amount=(n:number)=>(n/100).toFixed(2);
   const date=new Date(h.startedAt).toISOString().replace('T',' ').slice(0,19).replaceAll('-','/');
-  const lines=[`PokerStars Hand #${id}: Hold'em No Limit ($${amount(h.smallBlind!)} / $${amount(h.bigBlind!)} USD) - ${date} UTC`,`Table 'TenFour-${id}' ${h.players.length}-max Seat #${h.button!+1} is the button`,...h.players.map(p=>`Seat ${p.seat+1}: ${name(p.seat)} ($${amount(p.start!)} in chips)`)];
+  const lines=[`PokerStars Hand #${id}: Hold'em No Limit ($${amount(h.smallBlind!)}/$${amount(h.bigBlind!)} USD) - ${date} UTC [${easternDate(h.startedAt)} ET]`,`Table 'TenFour-${id}' ${Math.max(h.players.length,...h.players.map(p=>p.seat+1))}-max Seat #${h.button!+1} is the button`,...h.players.map(p=>`Seat ${p.seat+1}: ${name(p.seat)} ($${amount(p.start!)} in chips)`)];
   for(const a of h.actions.filter(a=>a.kind==='sb'||a.kind==='bb'))lines.push(`${name(a.seat)}: posts ${a.kind==='sb'?'small':'big'} blind $${amount(a.amount)}${a.allIn?' and is all-in':''}`);
   lines.push('*** HOLE CARDS ***',`Dealt to Hero [${h.players.find(p=>p.seat===h.heroSeat)!.cards.join(' ')}]`);
   let street:Street='preflop',high=h.bigBlind!;const paid=new Map<number,number>();
@@ -85,12 +100,19 @@ export async function pokerstars(h:Hand):Promise<string>{
     if(next==='river'&&h.board.length>=5)lines.push(`*** RIVER *** [${h.board.slice(0,4).join(' ')}] [${h.board[4]}]`);
   }
   const folded=new Set(h.actions.filter(a=>a.kind==='fold').map(a=>a.seat));const active=h.players.filter(p=>!folded.has(p.seat));
-  if(active.length>1){lines.push('*** SHOW DOWN ***');for(const p of active)if(p.cards.length===2)lines.push(`${name(p.seat)}: shows [${p.cards.join(' ')}]`);}
+  if(active.length>1){lines.push('*** SHOW DOWN ***');for(const p of active)if(p.cards.length===2)lines.push(`${name(p.seat)}: shows [${p.cards.join(' ')}] (${describeHand([...h.board,...p.cards])})`);}
   const {pots}=settlementPots(h);
   for(let i=0;i<pots.length;i++)for(const p of pots[i].awards)lines.push(`${name(p.seat)} collected $${amount(p.amount)} from ${pots.length===1?'pot':i===0?'main pot':pots.length===2?'side pot':`side pot-${i}`}`);
   const total=h.payouts.reduce((n,p)=>n+p.amount,0)+h.rake!;
   lines.push('*** SUMMARY ***',`Total pot $${amount(total)}${pots.length>1?' '+pots.map((p,i)=>`${i===0?'Main pot':pots.length===2?'Side pot':`Side pot-${i}`} $${amount(p.amount)}.`).join(' '):''} | Rake $${amount(h.rake!)}`);
   if(h.board.length)lines.push(`Board [${h.board.join(' ')}]`);
-  for(const p of h.players){const win=h.payouts.filter(w=>w.seat===p.seat).reduce((n,w)=>n+w.amount,0);const fold=h.actions.find(a=>a.seat===p.seat&&a.kind==='fold');lines.push(`Seat ${p.seat+1}: ${name(p.seat)}${p.seat===h.button?' (button)':''} ${fold?`folded ${fold.street==='preflop'?'before Flop':`on the ${fold.street[0].toUpperCase()+fold.street.slice(1)}`}`:win?`collected ($${amount(win)})`:'mucked'}`);}
+  for(const p of h.players){
+    const win=h.payouts.filter(w=>w.seat===p.seat).reduce((n,w)=>n+w.amount,0),fold=h.actions.find(a=>a.seat===p.seat&&a.kind==='fold');
+    const role=`${p.seat===h.button?' (button)':''}${h.actions.some(a=>a.seat===p.seat&&a.kind==='sb')?' (small blind)':''}${h.actions.some(a=>a.seat===p.seat&&a.kind==='bb')?' (big blind)':''}`;
+    const result=fold?`folded ${fold.street==='preflop'?'before Flop':`on the ${fold.street[0].toUpperCase()+fold.street.slice(1)}`}`
+      :active.length>1&&p.cards.length===2?`showed [${p.cards.join(' ')}] and ${win?`won ($${amount(win)})`:'lost'} with ${describeHand([...h.board,...p.cards])}`
+      :win?`collected ($${amount(win)})`:'mucked';
+    lines.push(`Seat ${p.seat+1}: ${name(p.seat)}${role} ${result}`);
+  }
   return lines.join('\n')+'\n\n';
 }

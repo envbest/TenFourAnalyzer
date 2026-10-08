@@ -1,0 +1,180 @@
+{
+  "id": "reported-import",
+  "sourceId": "legacy-export:16118550007087642483",
+  "tableId": "reported-import",
+  "mode": "normal",
+  "startedAt": 1791477553000,
+  "updatedAt": 1791477553000,
+  "heroSeat": 1,
+  "button": 5,
+  "players": [
+    {
+      "seat": 0,
+      "name": "Player1",
+      "position": "SB",
+      "cards": [],
+      "start": 10000
+    },
+    {
+      "seat": 1,
+      "name": "Hero",
+      "position": "BB",
+      "cards": [
+        "Ah",
+        "4s"
+      ],
+      "start": 10000
+    },
+    {
+      "seat": 2,
+      "name": "Player3",
+      "position": "UTG",
+      "cards": [],
+      "start": 10000
+    },
+    {
+      "seat": 3,
+      "name": "Player4",
+      "position": "HJ",
+      "cards": [],
+      "start": 10000
+    },
+    {
+      "seat": 4,
+      "name": "Player5",
+      "position": "CO",
+      "cards": [],
+      "start": 10000
+    },
+    {
+      "seat": 5,
+      "name": "Player6",
+      "position": "BTN",
+      "cards": [
+        "5s",
+        "Qs"
+      ],
+      "start": 10000
+    }
+  ],
+  "board": [
+    "3c",
+    "Ad",
+    "2h",
+    "Th",
+    "9s"
+  ],
+  "actions": [
+    {
+      "street": "preflop",
+      "seat": 0,
+      "kind": "sb",
+      "amount": 50
+    },
+    {
+      "street": "preflop",
+      "seat": 1,
+      "kind": "bb",
+      "amount": 100
+    },
+    {
+      "street": "preflop",
+      "seat": 2,
+      "kind": "fold",
+      "amount": 0
+    },
+    {
+      "street": "preflop",
+      "seat": 3,
+      "kind": "fold",
+      "amount": 0
+    },
+    {
+      "street": "preflop",
+      "seat": 4,
+      "kind": "fold",
+      "amount": 0
+    },
+    {
+      "street": "preflop",
+      "seat": 5,
+      "kind": "raise",
+      "amount": 250,
+      "to": 250
+    },
+    {
+      "street": "preflop",
+      "seat": 0,
+      "kind": "fold",
+      "amount": 0
+    },
+    {
+      "street": "preflop",
+      "seat": 1,
+      "kind": "call",
+      "amount": 150
+    },
+    {
+      "street": "flop",
+      "seat": 1,
+      "kind": "check",
+      "amount": 0
+    },
+    {
+      "street": "flop",
+      "seat": 5,
+      "kind": "bet",
+      "amount": 183
+    },
+    {
+      "street": "flop",
+      "seat": 1,
+      "kind": "call",
+      "amount": 183
+    },
+    {
+      "street": "turn",
+      "seat": 1,
+      "kind": "check",
+      "amount": 0
+    },
+    {
+      "street": "turn",
+      "seat": 5,
+      "kind": "bet",
+      "amount": 458
+    },
+    {
+      "street": "turn",
+      "seat": 1,
+      "kind": "call",
+      "amount": 458
+    },
+    {
+      "street": "river",
+      "seat": 1,
+      "kind": "check",
+      "amount": 0
+    },
+    {
+      "street": "river",
+      "seat": 5,
+      "kind": "check",
+      "amount": 0
+    }
+  ],
+  "payouts": [
+    {
+      "seat": 1,
+      "amount": 1740
+    }
+  ],
+  "rake": 92,
+  "smallBlind": 50,
+  "bigBlind": 100,
+  "status": "complete",
+  "issues": [],
+  "warnings": [],
+  "rawLines": [],
+  "profit": 849
+}

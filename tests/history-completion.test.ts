@@ -22,7 +22,7 @@ test('real Fast Fold detail completes missing actions, returns uncalled chips, a
   assert.equal(h.status,'complete');assert.ok(h.historyCompletedAt);assert.deepEqual(validateHand(h),[]);
   assert.equal(h.profit,0);assert.equal(h.rake,0);assert.equal(h.actions.at(-1)?.kind,'return');assert.equal(h.actions.at(-1)?.amount,200);
   assert.equal(h.actions.length,9);assert.deepEqual(h.payouts,[{seat:4,amount:200}]);
-  assert.match(await pokerstars(h),/Uncalled bet \(\$2\) returned to Player5/);
+  assert.match(await pokerstars(h),/Uncalled bet \(\$2\.00\) returned to Player5/);
   const stale=structuredClone(events[0]);stale.id=mode+'late-snapshot';stale.at=e.at+100;stale.event=mode==='normal'?'fastFoldTableState':mode==='expert'?'expertFastFoldTableState':'privateFastFoldTableState';
   await ingest(stale);assert.equal((await listHands()).find(h=>h.mode===mode)?.status,'complete');
  }

@@ -9,6 +9,7 @@ import {replay} from '../core/replay';
 import {settlementPots} from '../core/pots';
 import './style.css';
 import {SingleHandExport} from './SingleHandExport';
+import {RecorderNotice,recorderState,recorderLabels} from './RecorderNotice';
 const isExtension=typeof chrome!=='undefined'&&!!chrome.runtime?.id;
 const labels={recording:'記録中',incomplete:'データ不足',complete:'終了受信'};
 const actionLabels={sb:'Small blind',bb:'Big blind',fold:'Fold',check:'Check',call:'Call',bet:'Bet',raise:'Raise',return:'返却'};
@@ -22,8 +23,9 @@ function App(){
   const [tab,setTab]=useState<'hands'|'overview'|'settings'>('hands'),[demo,setDemo]=useState(false),[samples]=useState(demoHands);
   const [selected,setSelected]=useState<string|null>(null),[step,setStep]=useState(0),[query,setQuery]=useState(''),[position,setPosition]=useState('all'),[mode,setMode]=useState('all'),[state,setState]=useState('all'),[onlySaved,setOnlySaved]=useState(false),[from,setFrom]=useState(''),[to,setTo]=useState('');
   const [checked,setChecked]=useState<Set<string>>(new Set),[toast,setToast]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[showExport,setShowExport]=useState(false),[exportReport,setExportReport]=useState(''),[note,setNote]=useState('');
+  const [recLoaded,setRecLoaded]=useState(false);
   const upload=useRef<HTMLInputElement>(null);
-  const refresh=async()=>{try{const [h,n,r]=await Promise.all([listHands(),annotations(),status()]);setHands(h);setNotes(n);setRec(r);}catch(e){setError(String(e));}};
+  const refresh=async()=>{try{const [h,n,r]=await Promise.all([listHands(),annotations(),status()]);setHands(h);setNotes(n);setRec(r);setRecLoaded(true);}catch(e){setError(String(e));}};
   useEffect(()=>{void refresh();const timer=setInterval(()=>void refresh(),3000);return()=>clearInterval(timer);},[]);
   useEffect(()=>{if(toast){const timer=setTimeout(()=>setToast(''),4000);return()=>clearTimeout(timer);}},[toast]);
   const source=demo?samples:hands;
@@ -41,7 +43,8 @@ function App(){
   const ready=filtered.filter(h=>validateHand(h).length===0);
   const selectedHands=checked.size?filtered.filter(h=>checked.has(h.id)):filtered;
   const eligible=selectedHands.filter(h=>validateHand(h).length===0);
-  const capturing=isExtension&&rec.enabled&&Date.now()-rec.lastSeen<20000;
+  const receivingState=recorderState(rec);
+  const capturing=isExtension&&recLoaded&&receivingState==='receiving';
   const run=async(fn:()=>Promise<void>)=>{setBusy(true);setError('');try{await fn();}catch(e){setError(e instanceof Error?e.message:String(e));}finally{setBusy(false);}};
   const updateNote=async(bookmark?:boolean)=>{if(!hand)return;if(demo){setToast('デモのメモは保存されません');return;}await annotate({id:hand.id,bookmark:bookmark??noteMap.get(hand.id)?.bookmark??false,note});await refresh();};
   const exportHands=()=>run(async()=>{
@@ -58,9 +61,10 @@ function App(){
         <button className={tab==='settings'?'active':''} onClick={()=>setTab('settings')}><Settings size={18}/>記録・データ管理</button>
       </nav><div className="sidebar-bottom"><div className="private-note"><ShieldCheck size={17}/><div>あなたのデータは、端末内に。<small>クラウドへの送信はありません</small></div></div><div className="version">LOCAL WORKSPACE <span>v0.1.0</span></div></div>
     </aside>
-    <main><header className="topbar"><span>Workspace <ChevronRight size={13}/> {tab==='hands'?'ハンド履歴':tab==='overview'?'概要':'記録・データ管理'}</span><div className="top-actions"><span className={`record-indicator ${capturing?'live':''}`}><i/>{!isExtension?'ブラウザプレビュー':!rec.enabled?'記録停止中':capturing?'データ受信中':'受信待機中'}</span><button className="icon-button" title="データ管理" onClick={()=>setTab('settings')}><Database size={17}/></button></div></header>
+    <main><header className="topbar"><span>Workspace <ChevronRight size={13}/> {tab==='hands'?'ハンド履歴':tab==='overview'?'概要':'記録・データ管理'}</span><div className="top-actions"><button className={`record-indicator ${capturing?'live':''}`} title="記録の受信状況を確認" onClick={()=>setTab('settings')}><i/>{!isExtension?'ブラウザプレビュー':!recLoaded?'記録状況を確認中…':recorderLabels[receivingState]}</button><button className="icon-button" title="データ管理" onClick={()=>setTab('settings')}><Database size={17}/></button></div></header>
       <div className="content">
         {(error||rec.error)&&<div role="alert" className="alert error"><AlertCircle size={18}/>{error||rec.error}<button onClick={()=>{setError('');void setStatus({error:null}).then(refresh);}} aria-label="閉じる"><X size={16}/></button></div>}
+        {isExtension&&recLoaded&&!demo&&<RecorderNotice rec={rec} onRefresh={refresh} onResume={()=>run(async()=>{await setStatus({enabled:true});await refresh();})}/>}
         {demo&&<div className="alert demo"><Activity size={17}/>デモモード · 架空のハンドを表示しています。実際の記録とは分離されています。<button onClick={()=>{setDemo(false);setSelected(null);setChecked(new Set);}}>デモを終了 <X size={14}/></button></div>}
         <div className="page-heading"><div><div className="eyebrow">{tab==='settings'?'RECORDER & STORAGE':'YOUR GAME, IN FOCUS'}</div><h1>{tab==='hands'?'ハンド履歴':tab==='overview'?'プレイの振り返り':'記録・データ管理'}</h1><p>{tab==='settings'?'自動記録と、あなたの履歴データを管理します。':'プレイを記録して、気になる一手をじっくり振り返る。'}</p></div><div className="heading-actions">{!demo&&<button className="button secondary" onClick={()=>{setDemo(true);setSelected(null);setChecked(new Set);}}>デモを見る <ArrowUpRight size={15}/></button>}<button className="button primary" disabled={!filtered.length} onClick={()=>{setShowExport(true);setExportReport('');}}><Download size={17}/>エクスポート</button></div></div>
         {tab==='settings'?<section className="settings-grid"><article className="panel settings-card"><Radio size={25}/><h2>自動記録</h2><p>TenFourを開くとゲームの受信データを保存します。拡張導入後はTenFourのページを再読み込みしてください。</p><button className={`button ${rec.enabled?'secondary':'primary'}`} disabled={!isExtension} onClick={()=>void run(async()=>{await setStatus({enabled:!rec.enabled});await refresh();})}>{rec.enabled?<Pause size={16}/>:<Play size={16}/>}記録を{rec.enabled?'停止':'再開'}</button><dl><dt>保存したイベント</dt><dd>{rec.events.toLocaleString()}</dd><dt>最終保存</dt><dd>{rec.lastSaved?formatDate(rec.lastSaved):'まだ記録がありません'}</dd></dl><p className="muted">Chrome / Edgeの拡張機能ページで、配布ZIPを展開したフォルダ（manifest.jsonがある場所）を読み込んで利用します。</p></article>

@@ -19,7 +19,7 @@ test('observed live showdown reconciles reset stacks and retains all revealed ca
  const text=await pokerstars(h);assert.equal((text.match(/PokerStars Hand/g)||[]).length,1);
  assert.match(text,/Dealt to Hero \[9d Jh\]/);assert.match(text,/Hero collected \$4.84/);
  assert.match(text,/Player1: shows \[Ah Jd\]/);assert.doesNotMatch(text,/Player2: shows/);
- assert.match(text,/Total pot \$5.1 \| Rake \$0.26/);
+ assert.match(text,/Total pot \$5\.10 \| Rake \$0.26/);
 });
 
 test('reset chips without directly observed contribution evidence remain blocked',()=>{

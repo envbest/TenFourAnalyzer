@@ -4,19 +4,14 @@ TenFourのプレイをブラウザ内に記録し、ハンドのリプレイ・�
 
 ## 導入
 
-Git・Node.js 20以上・npm・Chromeを用意してください。
+**Chromeだけで利用できます。Git・Node.js・npmは不要です。**
 
-```bash
-git clone git@github.com:envbest/TenFourAnalyzer.git
-cd TenFourAnalyzer
-npm ci
-npm run build
-```
-
-1. Chromeで `chrome://extensions` を開き、「デベロッパーモード」を有効にします。
-2. 「パッケージ化されていない拡張機能を読み込む」から、このプロジェクトの `dist` フォルダを選びます。
-3. TenFourに通常どおりログインし、TenFourのページを再読み込みします。
-4. ブラウザの拡張機能メニューから **TenFour Analyzer** をクリックすると、記録画面が開きます。
+1. [ビルド済みZIPをダウンロード](https://github.com/envbest/TenFourAnalyzer/raw/refs/heads/main/downloads/tenfour-analyzer.zip)します。
+2. ZIPを展開し、中の `tenfour-analyzer` フォルダを任意の保存場所に置きます。このフォルダは利用中に移動・削除しないでください。
+3. Chromeで `chrome://extensions` を開き、「デベロッパーモード」を有効にします。
+4. 「パッケージ化されていない拡張機能を読み込む」から、展開した **`manifest.json` が入っている `tenfour-analyzer` フォルダ**を選びます。ZIPそのものは選びません。
+5. TenFourに通常どおりログインし、TenFourのページを再読み込みします。
+6. ブラウザの拡張機能メニューから **TenFour Analyzer** をクリックすると、記録画面が開きます。
 
 通常利用に開発サーバーやリモートデバッグの設定は不要です。
 
@@ -57,13 +52,13 @@ TenFour側の **Hand History** で対象ハンドの詳細を開いてくださ�
 
 ## 更新
 
-```bash
-git pull
-npm ci
-npm run build
-```
+1. プレイを終了し、「記録・データ管理」でバックアップを保存します。
+2. 最新のビルド済みZIPをダウンロードして展開します。
+3. 展開した `tenfour-analyzer` フォルダの中身を、**現在読み込んでいるフォルダへ上書き**します。
+4. `chrome://extensions` のTenFour Analyzerの更新ボタンを押し、TenFourのページも再読み込みします。
+5. 必要に応じて「原本から再処理」を実行します。
 
-バックアップを取ったうえで、`chrome://extensions` のTenFour Analyzerの更新ボタンを押し、TenFourのページも再読み込みしてください。再読み込みはプレイ終了後に行ってください。必要に応じて「原本から再処理」を実行します。
+拡張機能を削除・再追加する必要はありません。以前 `dist` を読み込んでいた場合も、その `dist` 内へ上書きしてください。保存先を変えると別の拡張機能として扱われる場合があります。
 
 ## 困ったとき・対応状況
 
@@ -75,11 +70,22 @@ npm run build
 
 ## 開発用
 
+ソースから変更・ビルドする場合のみ、Git・Node.js 20以上・npmが必要です。配布ZIPの作成にはPython 3も使用します。
+
+```bash
+git clone git@github.com:envbest/TenFourAnalyzer.git
+cd TenFourAnalyzer
+npm ci
+```
+
 ```bash
 npm run dev    # UIプレビュー
 npm test       # 自動テスト
 npm run check  # 型チェック
 npm run build  # 拡張機能をdistにビルド
+npm run package # ビルドしてdownloads/tenfour-analyzer.zipを作成
 ```
 
 UIプレビューは拡張機能とは保存領域が別です。実際のプレイ記録には、ブラウザへ読み込んだ拡張機能を使ってください。
+
+配布時はテストを実行し、`npm run package` で作成したZIPをソースと一緒にコミットしてください。ZIPにはビルド済み拡張機能とREADMEだけが入り、個人の記録やブラウザプロファイルは含まれません。

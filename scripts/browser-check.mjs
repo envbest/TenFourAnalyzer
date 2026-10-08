@@ -13,6 +13,27 @@ try{
  await page.goto('http://127.0.0.1:4173/');await page.getByRole('heading',{name:'最初のハンドを、ここに。'}).waitFor();
  await page.getByRole('button',{name:'デモを見る',exact:true}).click();await page.getByRole('heading',{name:'demo-001'}).waitFor();
  await page.screenshot({path:'artifacts/dashboard.png',fullPage:true});
+ await page.getByRole('checkbox',{name:'demo:002を選択',exact:true}).check();
+ await page.getByRole('button',{name:'このハンドを出力',exact:true}).click();
+ const single=page.getByRole('dialog',{name:'このハンドを出力',exact:true});
+ const singleText=await single.getByLabel('ハンド履歴テキスト（1件）').inputValue();
+ assert.equal((singleText.match(/PokerStars Hand/g)||[]).length,1);assert.match(singleText,/Dealt to Hero \[As Ks\]/);
+ await context.grantPermissions(['clipboard-read','clipboard-write']);
+ await single.getByRole('button',{name:'テキストをコピー',exact:true}).click();
+ assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),singleText);
+ const singleDownload=page.waitForEvent('download');await single.getByRole('button',{name:'この1件をダウンロード',exact:true}).click();
+ assert.equal(await readFile(await (await singleDownload).path(),'utf8'),singleText);
+ await page.evaluate(()=>Object.defineProperty(navigator.clipboard,'writeText',{configurable:true,value:()=>Promise.reject(new Error('denied'))}));
+ await single.getByRole('button',{name:'テキストをコピー',exact:true}).click();
+ await single.getByRole('alert').filter({hasText:'自動コピーできませんでした'}).waitFor();
+ assert.equal(await single.getByLabel('ハンド履歴テキスト（1件）').evaluate(e=>e.selectionEnd-e.selectionStart),singleText.length);
+ await page.evaluate(()=>delete navigator.clipboard.writeText);
+ await page.keyboard.press('Escape');await single.waitFor({state:'hidden'});
+ await page.getByRole('checkbox',{name:'demo:002を選択',exact:true}).uncheck();
+ await page.getByPlaceholder('カード・ID・メモで検索').fill('demo-003');
+ assert.ok(await page.getByRole('button',{name:'このハンドを出力',exact:true}).isDisabled());
+ await page.getByPlaceholder('カード・ID・メモで検索').fill('');
+
  await page.getByRole('button',{name:'最初へ',exact:true}).click();assert.equal(await page.getByRole('slider').inputValue(),'0');
  await page.getByRole('button',{name:'一手進む',exact:true}).click();assert.equal(await page.getByRole('slider').inputValue(),'1');
  await page.getByRole('button',{name:'最後へ',exact:true}).click();
@@ -43,6 +64,9 @@ try{
  await dashboard.getByText('卓から退出。終了結果の補完が必要です',{exact:true}).waitFor({state:'attached'});
  await dashboard.screenshot({path:'artifacts/extension-capture.png',fullPage:true});
  await dashboard.reload();await dashboard.getByRole('heading',{name:'table:integration-table',exact:true}).waitFor();
+ await dashboard.getByLabel('このハンドのメモ').fill('再処理後も保持');
+ await dashboard.getByRole('button',{name:'メモを保存',exact:true}).click();
+ await dashboard.getByRole('status').filter({hasText:'メモを保存しました'}).waitFor();
  await dashboard.getByRole('button',{name:'記録・データ管理',exact:true}).click();
  const backupDownload=dashboard.waitForEvent('download');
  await dashboard.getByRole('button',{name:'バックアップ',exact:true}).click();
@@ -52,6 +76,58 @@ try{
  await dashboard.getByRole('status').filter({hasText:'ハンド 0 件・イベント 0 件・メモ 0 件を復元しました（既存ハンド 1 件を維持）'}).waitFor();
  await dashboard.locator('input[type="file"]').setInputFiles({name:'invalid.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({...saved,hands:[{...saved.hands[0],profit:'bad'}]}))});
  await dashboard.getByRole('alert').filter({hasText:'対応するバックアップ形式ではありません'}).waitFor();
- console.log('PASS: backup download, idempotent restore report, invalid backup rejection');
+ await dashboard.getByRole('button',{name:'原本から再処理',exact:true}).click();
+ await dashboard.getByRole('status').filter({hasText:'1 件を再構築しました（既存 0 件を維持・順序不明 0 件）'}).waitFor();
+ await dashboard.getByRole('button',{name:/^ハンド履歴/}).click();
+ assert.equal(await dashboard.getByLabel('このハンドのメモ').inputValue(),'再処理後も保持');
+ await dashboard.getByText('卓から退出。終了結果の補完が必要です',{exact:true}).waitFor({state:'attached'});
+ console.log('PASS: backup download, idempotent restore, invalid backup rejection, reprocessing and note preservation');
+ const observed=JSON.parse(await readFile('tests/fixtures/observed-showdown.json','utf8'));
+ for(const e of observed.filter(e=>e.event==='fastFoldTableState'))socket.send('42'+JSON.stringify([e.event,e.payload]));
+ await dashboard.getByPlaceholder('カード・ID・メモで検索').fill('observed-showdown');
+ await dashboard.getByRole('button',{name:'このハンドを出力',exact:true}).waitFor();
+ await dashboard.getByRole('button',{name:'このハンドを出力',exact:true}).click();
+ const liveText=await dashboard.getByRole('dialog').getByLabel('ハンド履歴テキスト（1件）').inputValue();
+ assert.match(liveText,/Hero collected \$4.84/);await dashboard.getByRole('dialog').getByRole('button',{name:'閉じる',exact:true}).click();
+ const revealed=dashboard.getByRole('region',{name:'終了後のホールカード'});
+ assert.equal(await revealed.locator('.revealed-player').count(),6);
+ assert.equal(await revealed.locator('.card').count(),12);
+ console.log('PASS: single-hand clipboard and download, clipboard denial fallback, incomplete export guard, observed settlement and all six revealed hands');
+ const folded=JSON.parse(await readFile('tests/fixtures/observed-fast-fold.json','utf8'));
+ for(const e of folded.slice(0,2))socket.send('42'+JSON.stringify([e.event,{...e.payload,tableId:'browser-fast-fold'}]));
+ socket.send('42'+JSON.stringify(['fastFoldTableRemoved',{tableId:'browser-fast-fold'}]));
+ await dashboard.getByPlaceholder('カード・ID・メモで検索').fill('browser-fast-fold');
+ await dashboard.getByRole('heading',{name:'table:browser-fast-fold',exact:true}).waitFor();
+ assert.ok(await dashboard.getByRole('button',{name:'このハンドを出力',exact:true}).isDisabled());
+ const startedAt=await worker.evaluate(async()=>{const db=await new Promise(r=>{const q=indexedDB.open('tenfour-analyzer-v1');q.onsuccess=()=>r(q.result);});return new Promise(r=>{const q=db.transaction('hands').objectStore('hands').get('normal:browser-fast-fold');q.onsuccess=()=>{r(q.result.startedAt);db.close();};});});
+ const detail={...folded[2].payload.detail,id:'browser-fast-fold',startedAt:new Date(startedAt).toISOString(),createdAt:new Date().toISOString()};
+ await context.route('https://game.tenfour-poker.com/api/hand/browser-fast-fold',r=>r.fulfill({json:detail,headers:{'access-control-allow-origin':'https://tenfour-poker.com'}}));
+ await game.evaluate(()=>fetch('https://game.tenfour-poker.com/api/hand/browser-fast-fold').then(r=>r.json()));
+ await dashboard.getByText('履歴で補完済み',{exact:true}).waitFor();
+ await dashboard.getByRole('button',{name:'このハンドを出力',exact:true}).click();
+ assert.match(await dashboard.getByLabel('ハンド履歴テキスト（1件）').inputValue(),/Uncalled bet \(\$2\) returned to Player5/);
+ await dashboard.getByRole('dialog').getByRole('button',{name:'閉じる',exact:true}).click();
+ // Drive disconnect/reconnect through native WebSocket events and a fresh capture connection.
+ socket.send('42'+JSON.stringify(['fastFoldTableState',{...state,tableId:'browser-reconnect'}]));
+ await dashboard.getByPlaceholder('カード・ID・メモで検索').fill('browser-reconnect');
+ await dashboard.getByRole('heading',{name:'table:browser-reconnect',exact:true}).waitFor();
+ socket.close();await dashboard.getByText('接続が終了しました',{exact:true}).waitFor({state:'attached'});
+ await game.evaluate(()=>{window.socket=new WebSocket('wss://game.tenfour-poker.com/socket.io/?EIO=4&transport=websocket');});
+ await game.waitForFunction(()=>window.socket.readyState===1);
+ socket.send('42'+JSON.stringify(['fastFoldTableState',{...state,tableId:'browser-reconnect'}]));
+ await dashboard.locator('.badge.recording').waitFor();
+ // Stop the MV3 worker, then verify that the next capture wakes it and survives a UI reload.
+ const cdp=await context.newCDPSession(dashboard);
+ const version=new Promise(resolve=>cdp.on('ServiceWorker.workerVersionUpdated',e=>{const v=e.versions.find(v=>v.scriptURL===`chrome-extension://${extensionId}/background.js`);if(v)resolve(v.versionId);}));
+ await cdp.send('ServiceWorker.enable');
+ const versionId=await Promise.race([version,new Promise((_,reject)=>setTimeout(()=>reject(new Error('worker version unavailable')),5000))]);
+ await cdp.send('ServiceWorker.stopWorker',{versionId});
+ socket.send('42'+JSON.stringify(['fastFoldTableState',{...state,tableId:'browser-reconnect',actionHistory:[...state.actionHistory,'BTN RAISE 3bb']} ]));
+ await dashboard.getByRole('button').filter({hasText:'Raise'}).waitFor();
+ await dashboard.reload();await dashboard.getByPlaceholder('カード・ID・メモで検索').fill('browser-reconnect');
+ await dashboard.getByRole('button').filter({hasText:'Raise'}).waitFor();await cdp.detach();
+ console.log('PASS: normal HTTP hand-detail capture completes Fast Fold history; WebSocket disconnect/reconnect; MV3 worker restart and persistence');
+
+
  console.log('PASS: MV3 injection → WebSocket capture → isolated bridge → service worker → IndexedDB → dashboard, credential filtering, table removal, reload persistence');
 }finally{await context?.close();server.close();}

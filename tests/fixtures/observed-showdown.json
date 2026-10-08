@@ -1,0 +1,601 @@
+[
+  {
+    "id": "observed-0",
+    "at": 1767225600541,
+    "event": "fastFoldTableState",
+    "connection": "observed-connection",
+    "payload": {
+      "mySeatIndex": 2,
+      "buttonPosition": 0,
+      "communityCards": [],
+      "actionHistory": [
+        "# PREFLOP",
+        "SB POST 0.5bb",
+        "BB POST 1bb"
+      ],
+      "isHandInProgress": true,
+      "pot": 1.5,
+      "tableId": "observed-showdown",
+      "seats": [
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": [
+            "**",
+            "**"
+          ]
+        },
+        {
+          "chips": 99.5,
+          "initialChips": 100,
+          "cards": [
+            "**",
+            "**"
+          ]
+        },
+        {
+          "chips": 99,
+          "initialChips": 100,
+          "cards": [
+            "9d",
+            "Jh"
+          ]
+        },
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": [
+            "**",
+            "**"
+          ]
+        },
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": [
+            "**",
+            "**"
+          ]
+        },
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": [
+            "**",
+            "**"
+          ]
+        }
+      ],
+      "handResults": null
+    }
+  },
+  {
+    "id": "observed-1",
+    "at": 1767225640021,
+    "event": "fastFoldTableState",
+    "connection": "observed-connection",
+    "payload": {
+      "mySeatIndex": 2,
+      "buttonPosition": 0,
+      "communityCards": [
+        "4d",
+        "8s",
+        "2c",
+        "6c",
+        "9c"
+      ],
+      "actionHistory": [
+        "# PREFLOP",
+        "SB POST 0.5bb",
+        "BB POST 1bb",
+        "UTG FOLD",
+        "HJ FOLD",
+        "CO FOLD",
+        "BTN RAISE 2.3bb",
+        "SB FOLD",
+        "BB CALL",
+        "# FLOP (5.1bb)",
+        "BB CHECK",
+        "BTN CHECK",
+        "# TURN (5.1bb)",
+        "BB CHECK",
+        "BTN CHECK",
+        "# RIVER (5.1bb)",
+        "BB CHECK",
+        "BTN CHECK"
+      ],
+      "isHandInProgress": true,
+      "pot": 5.1,
+      "tableId": "observed-showdown",
+      "seats": [
+        {
+          "chips": 97.7,
+          "initialChips": 100,
+          "cards": [
+            "**",
+            "**"
+          ]
+        },
+        {
+          "chips": 99.5,
+          "initialChips": 100,
+          "cards": null
+        },
+        {
+          "chips": 97.7,
+          "initialChips": 100,
+          "cards": [
+            "9d",
+            "Jh"
+          ]
+        },
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": null
+        },
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": null
+        },
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": null
+        }
+      ],
+      "handResults": null
+    }
+  },
+  {
+    "id": "observed-2",
+    "at": 1767225641005,
+    "event": "fastFoldTableState",
+    "connection": "observed-connection",
+    "payload": {
+      "mySeatIndex": 2,
+      "buttonPosition": 0,
+      "communityCards": [
+        "4d",
+        "8s",
+        "2c",
+        "6c",
+        "9c"
+      ],
+      "actionHistory": [
+        "# PREFLOP",
+        "SB POST 0.5bb",
+        "BB POST 1bb",
+        "UTG FOLD",
+        "HJ FOLD",
+        "CO FOLD",
+        "BTN RAISE 2.3bb",
+        "SB FOLD",
+        "BB CALL",
+        "# FLOP (5.1bb)",
+        "BB CHECK",
+        "BTN CHECK",
+        "# TURN (5.1bb)",
+        "BB CHECK",
+        "BTN CHECK",
+        "# RIVER (5.1bb)",
+        "BB CHECK",
+        "BTN CHECK",
+        "# SHOWDOWN (5.1bb)",
+        "BTN: High Card",
+        "BB: One Pair",
+        "# BB wins 4.84bb",
+        "# RESULTS",
+        "BTN: -2.3bb",
+        "SB: -0.5bb",
+        "BB: +2.54bb",
+        "Rake: 0.26bb"
+      ],
+      "isHandInProgress": false,
+      "pot": 5.1,
+      "tableId": "observed-showdown",
+      "seats": [
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": [
+            "Ah",
+            "Jd"
+          ]
+        },
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": null
+        },
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": [
+            "9d",
+            "Jh"
+          ]
+        },
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": null
+        },
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": null
+        },
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": null
+        }
+      ],
+      "handResults": [
+        {
+          "seatIndex": 0,
+          "profit": -2.3,
+          "hand": [
+            "Ah",
+            "Jd"
+          ],
+          "isWinner": false
+        },
+        {
+          "seatIndex": 1,
+          "profit": -0.5,
+          "hand": [
+            "5d",
+            "3s"
+          ],
+          "isWinner": false
+        },
+        {
+          "seatIndex": 2,
+          "profit": 2.54,
+          "hand": [
+            "9d",
+            "Jh"
+          ],
+          "isWinner": true
+        },
+        {
+          "seatIndex": 3,
+          "profit": 0,
+          "hand": [
+            "8c",
+            "Js"
+          ],
+          "isWinner": false
+        },
+        {
+          "seatIndex": 4,
+          "profit": 0,
+          "hand": [
+            "7s",
+            "Kc"
+          ],
+          "isWinner": false
+        },
+        {
+          "seatIndex": 5,
+          "profit": 0,
+          "hand": [
+            "Ad",
+            "6s"
+          ],
+          "isWinner": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "observed-3",
+    "at": 1767225641012,
+    "event": "fastFoldTableState",
+    "connection": "observed-connection",
+    "payload": {
+      "mySeatIndex": 2,
+      "buttonPosition": 0,
+      "communityCards": [
+        "4d",
+        "8s",
+        "2c",
+        "6c",
+        "9c"
+      ],
+      "actionHistory": [
+        "# PREFLOP",
+        "SB POST 0.5bb",
+        "BB POST 1bb",
+        "UTG FOLD",
+        "HJ FOLD",
+        "CO FOLD",
+        "BTN RAISE 2.3bb",
+        "SB FOLD",
+        "BB CALL",
+        "# FLOP (5.1bb)",
+        "BB CHECK",
+        "BTN CHECK",
+        "# TURN (5.1bb)",
+        "BB CHECK",
+        "BTN CHECK",
+        "# RIVER (5.1bb)",
+        "BB CHECK",
+        "BTN CHECK",
+        "# SHOWDOWN (5.1bb)",
+        "BTN: High Card",
+        "BB: One Pair",
+        "# BB wins 4.84bb",
+        "# RESULTS",
+        "BTN: -2.3bb",
+        "SB: -0.5bb",
+        "BB: +2.54bb",
+        "Rake: 0.26bb"
+      ],
+      "isHandInProgress": false,
+      "pot": 5.1,
+      "tableId": "observed-showdown",
+      "seats": [
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": [
+            "Ah",
+            "Jd"
+          ]
+        },
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": null
+        },
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": [
+            "9d",
+            "Jh"
+          ]
+        },
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": null
+        },
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": null
+        },
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": null
+        }
+      ],
+      "handResults": [
+        {
+          "seatIndex": 0,
+          "profit": -2.3,
+          "hand": [
+            "Ah",
+            "Jd"
+          ],
+          "isWinner": false
+        },
+        {
+          "seatIndex": 1,
+          "profit": -0.5,
+          "hand": [
+            "5d",
+            "3s"
+          ],
+          "isWinner": false
+        },
+        {
+          "seatIndex": 2,
+          "profit": 2.54,
+          "hand": [
+            "9d",
+            "Jh"
+          ],
+          "isWinner": true
+        },
+        {
+          "seatIndex": 3,
+          "profit": 0,
+          "hand": [
+            "8c",
+            "Js"
+          ],
+          "isWinner": false
+        },
+        {
+          "seatIndex": 4,
+          "profit": 0,
+          "hand": [
+            "7s",
+            "Kc"
+          ],
+          "isWinner": false
+        },
+        {
+          "seatIndex": 5,
+          "profit": 0,
+          "hand": [
+            "Ad",
+            "6s"
+          ],
+          "isWinner": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "observed-detail",
+    "at": 1767226209633,
+    "event": "handDetail",
+    "connection": "http",
+    "payload": {
+      "handId": "observed-history",
+      "detail": {
+        "id": "observed-history",
+        "createdAt": "2026-01-01T00:00:41.065Z",
+        "startedAt": "2026-01-01T00:00:00Z",
+        "players": [
+          {
+            "position": "UTG",
+            "cards": [
+              "8c",
+              "Js"
+            ],
+            "profit": 0
+          },
+          {
+            "position": "HJ",
+            "cards": [
+              "7s",
+              "Kc"
+            ],
+            "profit": 0
+          },
+          {
+            "position": "CO",
+            "cards": [
+              "Ad",
+              "6s"
+            ],
+            "profit": 0
+          },
+          {
+            "position": "BTN",
+            "cards": [
+              "Ah",
+              "Jd"
+            ],
+            "profit": -2.3
+          },
+          {
+            "position": "SB",
+            "cards": [
+              "5d",
+              "3s"
+            ],
+            "profit": -0.5
+          },
+          {
+            "position": "BB",
+            "cards": [
+              "9d",
+              "Jh"
+            ],
+            "profit": 2.54
+          }
+        ],
+        "rounds": [
+          {
+            "street": "Preflop",
+            "pot": 0,
+            "actions": [
+              {
+                "position": "UTG",
+                "action": "Fold"
+              },
+              {
+                "position": "HJ",
+                "action": "Fold"
+              },
+              {
+                "position": "CO",
+                "action": "Fold"
+              },
+              {
+                "position": "BTN",
+                "action": "Raise",
+                "amount": 2.3
+              },
+              {
+                "position": "SB",
+                "action": "Fold"
+              },
+              {
+                "position": "BB",
+                "action": "Call",
+                "amount": 2.3
+              }
+            ]
+          },
+          {
+            "street": "Flop",
+            "pot": 5.1,
+            "actions": [
+              {
+                "position": "BB",
+                "action": "Check"
+              },
+              {
+                "position": "BTN",
+                "action": "Check"
+              }
+            ],
+            "cards": [
+              "4d",
+              "8s",
+              "2c"
+            ]
+          },
+          {
+            "street": "Turn",
+            "pot": 5.1,
+            "actions": [
+              {
+                "position": "BB",
+                "action": "Check"
+              },
+              {
+                "position": "BTN",
+                "action": "Check"
+              }
+            ],
+            "cards": [
+              "6c"
+            ]
+          },
+          {
+            "street": "River",
+            "pot": 5.1,
+            "actions": [
+              {
+                "position": "BB",
+                "action": "Check"
+              },
+              {
+                "position": "BTN",
+                "action": "Check"
+              }
+            ],
+            "cards": [
+              "9c"
+            ]
+          },
+          {
+            "street": "Showdown",
+            "pot": 5.1
+          }
+        ],
+        "result": {
+          "winners": [
+            {
+              "position": "BB",
+              "amount": 4.84
+            }
+          ],
+          "rake": 0.26
+        }
+      }
+    }
+  }
+]

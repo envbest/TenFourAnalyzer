@@ -1,5 +1,6 @@
 import { money, type Hand, type Street } from './types';
 import { validateBettingOrder } from './betting';
+import {settlementPots} from './pots';
 export function validateHand(h:Hand):string[]{
   const errors=[...h.issues,...validateBettingOrder(h)];const add=(s:string)=>errors.push(s);
   if(h.status!=='complete')add('ハンドが完了していません');
@@ -48,9 +49,10 @@ export function validateHand(h:Hand):string[]{
   const active=h.players.filter(p=>!folded.has(p.seat));
   if(active.length>1&&h.board.length!==5)add('ショーダウンのボードが不足しています');
   if(active.length>1&&h.payouts.some(w=>h.players.find(p=>p.seat===w.seat)?.cards.length!==2))add('ショーダウンの勝者カードが不足しています');
-  if(h.payouts.length>1)add('複数ポット・分配の出力は初期版では未対応です');
+
   const hs=h.heroSeat;
   if(h.profit!==null&&hs!==null){const spent=h.actions.filter(a=>a.seat===hs).reduce((n,a)=>n+(a.kind==='return'?-a.amount:a.amount),0),won=h.payouts.filter(p=>p.seat===hs).reduce((n,p)=>n+p.amount,0);if(won-spent!==h.profit)add('自分の収支が一致しません');}
+  if(errors.length===0)errors.push(...settlementPots(h).issues);
   return [...new Set(errors)];
 }
 export async function pokerstars(h:Hand):Promise<string>{
@@ -61,8 +63,8 @@ export async function pokerstars(h:Hand):Promise<string>{
   const name=(seat:number)=>seat===h.heroSeat?'Hero':`Player${seat+1}`;
   const amount=(n:number)=>money(n).replaceAll(',','');
   const date=new Date(h.startedAt).toISOString().replace('T',' ').slice(0,19).replaceAll('-','/');
-  const lines=[`PokerStars Hand #${id}: Hold'em No Limit ($${amount(h.smallBlind!)} / $${amount(h.bigBlind!)} USD) - ${date} UTC`,`Table 'TenFour-${id}' 6-max Seat #${h.button!+1} is the button`,...h.players.map(p=>`Seat ${p.seat+1}: ${name(p.seat)} ($${amount(p.start!)} in chips)`)];
-  for(const a of h.actions.filter(a=>a.kind==='sb'||a.kind==='bb'))lines.push(`${name(a.seat)}: posts ${a.kind==='sb'?'small':'big'} blind $${amount(a.amount)}`);
+  const lines=[`PokerStars Hand #${id}: Hold'em No Limit ($${amount(h.smallBlind!)} / $${amount(h.bigBlind!)} USD) - ${date} UTC`,`Table 'TenFour-${id}' ${h.players.length}-max Seat #${h.button!+1} is the button`,...h.players.map(p=>`Seat ${p.seat+1}: ${name(p.seat)} ($${amount(p.start!)} in chips)`)];
+  for(const a of h.actions.filter(a=>a.kind==='sb'||a.kind==='bb'))lines.push(`${name(a.seat)}: posts ${a.kind==='sb'?'small':'big'} blind $${amount(a.amount)}${a.allIn?' and is all-in':''}`);
   lines.push('*** HOLE CARDS ***',`Dealt to Hero [${h.players.find(p=>p.seat===h.heroSeat)!.cards.join(' ')}]`);
   let street:Street='preflop',high=h.bigBlind!;const paid=new Map<number,number>();
   for(const a of h.actions){
@@ -84,9 +86,10 @@ export async function pokerstars(h:Hand):Promise<string>{
   }
   const folded=new Set(h.actions.filter(a=>a.kind==='fold').map(a=>a.seat));const active=h.players.filter(p=>!folded.has(p.seat));
   if(active.length>1){lines.push('*** SHOW DOWN ***');for(const p of active)if(p.cards.length===2)lines.push(`${name(p.seat)}: shows [${p.cards.join(' ')}]`);}
-  for(const p of h.payouts)lines.push(`${name(p.seat)} collected $${amount(p.amount)} from pot`);
+  const {pots}=settlementPots(h);
+  for(let i=0;i<pots.length;i++)for(const p of pots[i].awards)lines.push(`${name(p.seat)} collected $${amount(p.amount)} from ${pots.length===1?'pot':i===0?'main pot':pots.length===2?'side pot':`side pot-${i}`}`);
   const total=h.payouts.reduce((n,p)=>n+p.amount,0)+h.rake!;
-  lines.push('*** SUMMARY ***',`Total pot $${amount(total)} | Rake $${amount(h.rake!)}`);
+  lines.push('*** SUMMARY ***',`Total pot $${amount(total)}${pots.length>1?' '+pots.map((p,i)=>`${i===0?'Main pot':pots.length===2?'Side pot':`Side pot-${i}`} $${amount(p.amount)}.`).join(' '):''} | Rake $${amount(h.rake!)}`);
   if(h.board.length)lines.push(`Board [${h.board.join(' ')}]`);
   for(const p of h.players){const win=h.payouts.filter(w=>w.seat===p.seat).reduce((n,w)=>n+w.amount,0);const fold=h.actions.find(a=>a.seat===p.seat&&a.kind==='fold');lines.push(`Seat ${p.seat+1}: ${name(p.seat)}${p.seat===h.button?' (button)':''} ${fold?`folded ${fold.street==='preflop'?'before Flop':`on the ${fold.street[0].toUpperCase()+fold.street.slice(1)}`}`:win?`collected ($${amount(win)})`:'mucked'}`);}
   return lines.join('\n')+'\n\n';

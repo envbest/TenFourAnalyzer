@@ -1,4 +1,6 @@
-import { fromSnapshot, recordKey } from './adapter';
+import { recordKey } from './adapter';
+import {fromHistory} from './history';
+import {applyCapture,reconstruct,preservesEvidence,removalMatches} from './reprocess';
 import { sanitize, validCapture } from './protocol';
 import type { Annotation, Capture, Hand, RecorderStatus } from './types';
 const DB='tenfour-analyzer-v1';
@@ -22,21 +24,24 @@ export async function ingest(input:Capture){
   if(!validCapture(input))throw new Error('受信データ形式が不正です');
   const c={...input,payload:sanitize(input.payload)};
   const db=await database(),tx=db.transaction(['events','hands','meta'],'readwrite'),end=done(tx);
+  try{
   const events=tx.objectStore('events'),hands=tx.objectStore('hands'),meta=tx.objectStore('meta');
   // All reads/writes are in one transaction: retries and service-worker restarts are idempotent.
   const current:RecorderStatus=await result(meta.get('status'))??initialStatus;
   if(!current.enabled){await end;return;}
   if(await result(events.get(c.id))){await end;return;}
   events.put(c);
-  const key=recordKey(c);
-  if(c.event.endsWith('TableState')&&key){const previous=await result<Hand|undefined>(hands.get(key));const h=fromSnapshot(c,previous);if(h)hands.put(h);}
-  else if(c.event.endsWith('TableRemoved')&&key){const previous=await result<Hand|undefined>(hands.get(key));if(previous&&previous.status!=='complete')hands.put({...previous,status:'incomplete',updatedAt:c.at,issues:[...new Set([...previous.issues,'卓から退出。終了結果の補完が必要です'])]});}
-  else if(c.event==='connectionClosed'){
-    // Only records observed on this connection are affected, not the other tab/table.
-    const all=await result<Capture[]>(events.index('connection').getAll(c.connection));const ids=new Set(all.map(recordKey));
-    for(const id of ids){if(!id)continue;const h=await result<Hand|undefined>(hands.get(id));if(h?.status==='recording')hands.put({...h,status:'incomplete',issues:[...new Set([...h.issues,'接続が終了しました'])]});}
+  if(c.event==='handDetail'){
+    const candidates=(await result<Hand[]>(hands.getAll())).map(h=>fromHistory(c,h)).filter((h):h is Hand=>!!h);
+    if(candidates.length===1)hands.put(candidates[0]);
   }
+  const key=recordKey(c);
+  const ids=c.event==='connectionClosed'
+    ?new Set((await result<Capture[]>(events.index('connection').getAll(c.connection))).map(recordKey))
+    :c.event.endsWith('TableRemoved')?new Set((await result<Hand[]>(hands.getAll())).filter(h=>removalMatches(c,h)).map(h=>h.id)):new Set([key]);
+  for(const id of ids){if(!id)continue;const previous=await result<Hand|undefined>(hands.get(id));const h=applyCapture(c,previous);if(h&&h!==previous)hands.put(h);}
   meta.put({...current,lastSeen:c.at,lastSaved:Date.now(),events:current.events+1,error:null},'status');await end;
+  }catch(error){try{tx.abort();}catch{}await end.catch(()=>{});throw error;}
 }
 export async function backup(){const db=await database(),tx=db.transaction(['events','hands','annotations']);const [events,hands,notes]=await Promise.all([result(tx.objectStore('events').getAll()),result(tx.objectStore('hands').getAll()),result(tx.objectStore('annotations').getAll())]);return {format:'tenfour-analyzer',version:1,createdAt:new Date().toISOString(),events,hands,annotations:notes};}
 const object=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
@@ -63,6 +68,10 @@ export function validHandShape(h:unknown):h is Hand {
       &&nonnegative(a.amount)&&(a.to===undefined||nonnegative(a.to))&&(a.allIn===undefined||typeof a.allIn==='boolean'))
     &&cardList(h.board,5)&&Array.isArray(h.payouts)&&h.payouts.every(p=>object(p)&&seat(p.seat)&&nonnegative(p.amount))
     &&nullable(h.rake,integer)&&nullable(h.smallBlind,nonnegative)&&nullable(h.bigBlind,nonnegative)&&nullable(h.profit,integer)
+    &&(h.revealedAt===undefined||timestamp(h.revealedAt))
+    &&(h.historyCompletedAt===undefined||timestamp(h.historyCompletedAt))
+    &&(h.connection===undefined||identifier(h.connection))
+    &&(h.observedStacks===undefined||(Array.isArray(h.observedStacks)&&h.observedStacks.length<=9&&h.observedStacks.every(s=>object(s)&&seat(s.seat)&&nullable(s.amount,nonnegative))&&new Set(h.observedStacks.map(s=>s.seat)).size===h.observedStacks.length))
     &&strings(h.issues)&&strings(h.warnings)&&strings(h.rawLines)
     &&['recording','incomplete','complete'].includes(h.status as string)&&(h.demo===undefined||typeof h.demo==='boolean');
 }
@@ -85,3 +94,23 @@ export async function restore(value:unknown):Promise<RestoreReport>{
   }catch(error){try{tx.abort();}catch{/* The transaction may already have aborted. */}await end.catch(()=>{});throw error;}
 }
 export async function seedHands(hands:Hand[]){const db=await database(),tx=db.transaction('hands','readwrite'),end=done(tx);hands.forEach(h=>tx.objectStore('hands').put(h));await end;}
+
+export async function reprocess(){
+  // Lock event and hand stores together so live ingestion cannot be overwritten.
+  const db=await database(),tx=db.transaction(['events','hands'],'readwrite'),end=done(tx);
+  try{
+    const [events,existing]=await Promise.all([
+      result<Capture[]>(tx.objectStore('events').getAll()),
+      result<Hand[]>(tx.objectStore('hands').getAll())
+    ]);
+    const rebuilt=reconstruct(events),old=new Map(existing.map(h=>[h.id,h]));
+    let rebuiltHands=0;
+    for(const h of rebuilt.hands.values()){
+      const previous=old.get(h.id);
+      if(previous&&!preservesEvidence(h,previous))continue;
+      tx.objectStore('hands').put(h);old.delete(h.id);rebuiltHands++;
+    }
+    await end;
+    return {events:events.length,rebuiltHands,preservedHands:old.size,ambiguousHands:rebuilt.ambiguous.size};
+  }catch(error){try{tx.abort();}catch{/* Already finished. */}await end.catch(()=>{});throw error;}
+}

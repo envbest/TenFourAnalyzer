@@ -10,8 +10,13 @@ export interface Hand {
   rake: number | null; smallBlind: number | null; bigBlind: number | null;
   status: 'recording' | 'incomplete' | 'complete'; issues: string[]; warnings: string[];
   rawLines: string[]; profit: number | null; demo?: boolean;
+  revealedAt?: number;
+  historyCompletedAt?: number;
+  connection?: string;
+  /** Last directly observed stacks before settlement resets the table. */
+  observedStacks?: {seat:number;amount:number|null}[];
 }
-export interface Capture { id: string; event: string; payload: unknown; at: number; connection: string }
+export interface Capture { id: string; event: string; payload: unknown; at: number; connection: string; sequence?: number }
 export interface Annotation { id: string; bookmark: boolean; note: string }
 export interface RecorderStatus { lastSeen: number; lastSaved: number; error: string | null; enabled: boolean; events: number }
 export const money = (x:number) => (x / 100).toLocaleString('en-US', {maximumFractionDigits:2});

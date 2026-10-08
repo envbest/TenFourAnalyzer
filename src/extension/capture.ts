@@ -1,9 +1,10 @@
 import {decodeFrames,sanitize} from '../core/protocol';
 (() => {
   const CHANNEL='tenfour-analyzer-capture-v1';
+  let sequence=0;
   const safeHost=(url:string)=>{try{const u=new URL(url,location.href);return u.hostname==='game.tenfour-poker.com'&&u.pathname.startsWith('/socket.io/');}catch{return false;}};
   const emit=(event:string,payload:unknown,connection:string)=>{
-    try{window.postMessage({channel:CHANNEL,capture:{id:crypto.randomUUID(),at:Date.now(),event,payload:sanitize(payload),connection}},location.origin);}catch{/* Never interrupt game delivery. */}
+    try{window.postMessage({channel:CHANNEL,capture:{id:crypto.randomUUID(),at:Date.now(),sequence:sequence++,event,payload:sanitize(payload),connection}},location.origin);}catch{/* Never interrupt game delivery. */}
   };
   const Original=window.WebSocket;
   window.WebSocket=new Proxy(Original,{construct(Target,args){

@@ -23,5 +23,5 @@ export function sanitize(value:unknown,depth=0):unknown {
 export function validCapture(value:unknown):value is Capture {
   if(!value||typeof value!=='object')return false;
   const x=value as Capture;
-  return typeof x.id==='string' && x.id.length>0 && x.id.length<=180 && typeof x.connection==='string' && x.connection.length>0 && x.connection.length<=180 && Number.isSafeInteger(x.at) && x.at>=0 && Number.isFinite(new Date(x.at).getTime()) && (EVENTS.has(x.event)||x.event==='handDetail'||x.event==='connectionClosed') && !!x.payload && typeof x.payload==='object' && !Array.isArray(x.payload);
+  return typeof x.id==='string' && x.id.length>0 && x.id.length<=180 && typeof x.connection==='string' && x.connection.length>0 && x.connection.length<=180 && Number.isSafeInteger(x.at) && x.at>=0 && Number.isFinite(new Date(x.at).getTime()) && (EVENTS.has(x.event)||x.event==='handDetail'||x.event==='connectionClosed') && !!x.payload && typeof x.payload==='object' && !Array.isArray(x.payload) && (x.sequence===undefined||(Number.isSafeInteger(x.sequence)&&x.sequence>=0));
 }

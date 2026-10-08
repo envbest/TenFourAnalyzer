@@ -6,6 +6,7 @@ export function validateBettingOrder(h:Hand):string[]{
   const stacks=new Map(h.players.map(p=>[p.seat,p.start??0]));
   const folded=new Set<number>();let paid=new Map<number,number>();
   let street:Street='preflop',current=0,lastRaise=h.bigBlind??0,decisions=false,returned=false;
+  let faced=new Map<number,number>();
   let pending=new Set<number>();let cursor=h.actions.find(a=>a.kind==='bb')?.seat??h.button??0;
   const active=()=>seats.filter(s=>!folded.has(s)&&(stacks.get(s)??0)>0);
   const stillIn=()=>seats.filter(s=>!folded.has(s));
@@ -14,7 +15,7 @@ export function validateBettingOrder(h:Hand):string[]{
   for(const a of h.actions){
     if(a.street!==street){
       if(unfinished())problems.push('前のストリートのアクションが完了していません');
-      street=a.street;paid=new Map;current=0;lastRaise=h.bigBlind??0;cursor=h.button??0;decisions=true;
+      street=a.street;paid=new Map;faced=new Map;current=0;lastRaise=h.bigBlind??0;cursor=h.button??0;decisions=true;
       const eligible=active();pending=new Set(eligible.length>1?eligible:[]);
     }
     if(a.kind==='sb'||a.kind==='bb'){
@@ -32,12 +33,14 @@ export function validateBettingOrder(h:Hand):string[]{
     if(next()!==a.seat)problems.push('アクション順序が不正または途中のアクションが不足しています');
     const old=paid.get(a.seat)??0,remaining=stacks.get(a.seat)??0,newTotal=old+a.amount;
     if(a.kind==='bet'||a.kind==='raise'){
+      if(faced.has(a.seat)&&current-faced.get(a.seat)!<lastRaise)problems.push('ショートオールイン後のレイズ権がありません');
       const increment=newTotal-current;
       if(increment<lastRaise&&a.amount!==remaining)problems.push('最小レイズ額を満たしていません');
       if(increment>=lastRaise)lastRaise=increment;
       current=newTotal;pending=new Set(active().filter(s=>s!==a.seat));
     }
     if(a.kind==='fold')folded.add(a.seat);
+    else if(a.kind!=='check'||current>0)faced.set(a.seat,current);
     pending.delete(a.seat);cursor=a.seat;paid.set(a.seat,newTotal);stacks.set(a.seat,remaining-a.amount);
   }
   if(unfinished())problems.push('最終ストリートのアクションが不足しています');

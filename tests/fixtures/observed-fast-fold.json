@@ -1,0 +1,240 @@
+[
+  {
+    "id": "fast-fold-0",
+    "at": 1767225600303,
+    "event": "fastFoldTableState",
+    "connection": "observed-fast-fold",
+    "payload": {
+      "mySeatIndex": 1,
+      "buttonPosition": 3,
+      "communityCards": [],
+      "actionHistory": [
+        "# PREFLOP",
+        "SB POST 0.5bb",
+        "BB POST 1bb"
+      ],
+      "isHandInProgress": true,
+      "pot": 1.5,
+      "tableId": "observed-fast-fold",
+      "seats": [
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": [
+            "**",
+            "**"
+          ]
+        },
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": [
+            "Jc",
+            "9s"
+          ]
+        },
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": [
+            "**",
+            "**"
+          ]
+        },
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": [
+            "**",
+            "**"
+          ]
+        },
+        {
+          "chips": 99.5,
+          "initialChips": 100,
+          "cards": [
+            "**",
+            "**"
+          ]
+        },
+        {
+          "chips": 99,
+          "initialChips": 100,
+          "cards": [
+            "**",
+            "**"
+          ]
+        }
+      ],
+      "handResults": null
+    }
+  },
+  {
+    "id": "fast-fold-1",
+    "at": 1767225603721,
+    "event": "fastFoldTableState",
+    "connection": "observed-fast-fold",
+    "payload": {
+      "mySeatIndex": 1,
+      "buttonPosition": 3,
+      "communityCards": [],
+      "actionHistory": [
+        "# PREFLOP",
+        "SB POST 0.5bb",
+        "BB POST 1bb",
+        "UTG FOLD",
+        "HJ FOLD",
+        "CO FOLD",
+        "BTN FOLD"
+      ],
+      "isHandInProgress": true,
+      "pot": 1.5,
+      "tableId": "observed-fast-fold",
+      "seats": [
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": null
+        },
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": null
+        },
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": null
+        },
+        {
+          "chips": 100,
+          "initialChips": 100,
+          "cards": null
+        },
+        {
+          "chips": 99.5,
+          "initialChips": 100,
+          "cards": [
+            "**",
+            "**"
+          ]
+        },
+        {
+          "chips": 99,
+          "initialChips": 100,
+          "cards": [
+            "**",
+            "**"
+          ]
+        }
+      ],
+      "handResults": null
+    }
+  },
+  {
+    "id": "fast-fold-detail",
+    "at": 1767228653535,
+    "event": "handDetail",
+    "connection": "http",
+    "payload": {
+      "handId": "fast-fold-history",
+      "detail": {
+        "id": "fast-fold-history",
+        "createdAt": "2026-01-01T00:00:07.469Z",
+        "startedAt": "2026-01-01T00:00:00Z",
+        "players": [
+          {
+            "position": "UTG",
+            "cards": [
+              "Kh",
+              "2d"
+            ],
+            "profit": 0
+          },
+          {
+            "position": "HJ",
+            "cards": [
+              "Jc",
+              "9s"
+            ],
+            "profit": 0
+          },
+          {
+            "position": "CO",
+            "cards": [
+              "8h",
+              "5d"
+            ],
+            "profit": 0
+          },
+          {
+            "position": "BTN",
+            "cards": [
+              "4h",
+              "Ac"
+            ],
+            "profit": 0
+          },
+          {
+            "position": "SB",
+            "cards": [
+              "9d",
+              "As"
+            ],
+            "profit": 1
+          },
+          {
+            "position": "BB",
+            "cards": [
+              "Tc",
+              "3s"
+            ],
+            "profit": -1
+          }
+        ],
+        "rounds": [
+          {
+            "street": "Preflop",
+            "pot": 0,
+            "actions": [
+              {
+                "position": "UTG",
+                "action": "Fold"
+              },
+              {
+                "position": "HJ",
+                "action": "Fold"
+              },
+              {
+                "position": "CO",
+                "action": "Fold"
+              },
+              {
+                "position": "BTN",
+                "action": "Fold"
+              },
+              {
+                "position": "SB",
+                "action": "Raise",
+                "amount": 3
+              },
+              {
+                "position": "BB",
+                "action": "Fold"
+              }
+            ]
+          }
+        ],
+        "result": {
+          "winners": [
+            {
+              "position": "SB",
+              "amount": 2
+            }
+          ],
+          "rake": 0
+        }
+      }
+    }
+  }
+]

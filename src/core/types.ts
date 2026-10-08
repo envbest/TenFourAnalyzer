@@ -1,3 +1,4 @@
+export const GTO_IMPORT_STATUS='通常卓の実ハンド1件でGTO Wizardへの取り込みを確認済みです。';
 export type Street = 'preflop' | 'flop' | 'turn' | 'river';
 export type ActionKind = 'sb' | 'bb' | 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'return';
 /** All amounts are integer hundredths of a big blind. */

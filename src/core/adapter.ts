@@ -1,4 +1,4 @@
-import { cards, units, type Action, type Capture, type Hand, type Player, type Street } from './types';
+import { GTO_IMPORT_STATUS, cards, units, type Action, type Capture, type Hand, type Player, type Street } from './types';
 const obj=(x:unknown):Record<string,any>=>x&&typeof x==='object'&&!Array.isArray(x)?x as Record<string,any>:{};
 export function positions(seats:unknown[],button:number):Map<number,string> {
   const occupied=seats.map((s,i)=>s?i:-1).filter(i=>i>=0);
@@ -99,5 +99,5 @@ export function fromSnapshot(c:Capture,previous?:Hand):Hand|null {
   const heroResult=results.find((r:any)=>r.seatIndex===heroSeat);
   const sourceId=typeof p.handId==='string'?p.handId:previous?.sourceId??`table:${p.tableId}`;
   if(!complete)issues.push('終了結果が未取得');
-  return {id:key,sourceId,connection:c.connection,tableId:p.tableId,mode:key.startsWith('expert')?'expert':key.startsWith('private')?'private':'normal',startedAt:previous?.startedAt??at,updatedAt:at,heroSeat,button,players,board:cards(p.communityCards),actions:parsed.actions,payouts,rake,smallBlind:parsed.actions.find(a=>a.kind==='sb')?.amount??null,bigBlind:parsed.actions.find(a=>a.kind==='bb')?.amount??null,status:complete?'complete':'recording',issues,warnings:['GTOWizardでの取り込み検証は未実施です。',...(sourceId.startsWith('table:')?['出力IDは卓IDから生成します。日時は最初の受信時刻です。']:[])],rawLines:lines,profit:units(heroResult?.profit),...(observedStacks?{observedStacks}:{}),...(previous?.revealedAt?{revealedAt:previous.revealedAt}:{})};
+  return {id:key,sourceId,connection:c.connection,tableId:p.tableId,mode:key.startsWith('expert')?'expert':key.startsWith('private')?'private':'normal',startedAt:previous?.startedAt??at,updatedAt:at,heroSeat,button,players,board:cards(p.communityCards),actions:parsed.actions,payouts,rake,smallBlind:parsed.actions.find(a=>a.kind==='sb')?.amount??null,bigBlind:parsed.actions.find(a=>a.kind==='bb')?.amount??null,status:complete?'complete':'recording',issues,warnings:[GTO_IMPORT_STATUS,...(sourceId.startsWith('table:')?['出力IDは卓IDから生成します。日時は最初の受信時刻です。']:[])],rawLines:lines,profit:units(heroResult?.profit),...(observedStacks?{observedStacks}:{}),...(previous?.revealedAt?{revealedAt:previous.revealedAt}:{})};
 }

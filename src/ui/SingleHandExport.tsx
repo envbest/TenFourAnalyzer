@@ -1,7 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {Copy,Download,FileText,X} from 'lucide-react';
 import {pokerstars,validateHand} from '../core/export';
-import type {Hand} from '../core/types';
+import {GTO_IMPORT_STATUS,type Hand} from '../core/types';
 
 export function SingleHandExport({hand}:{hand:Hand}){
   const dialog=useRef<HTMLDialogElement>(null),field=useRef<HTMLTextAreaElement>(null);
@@ -34,7 +34,7 @@ export function SingleHandExport({hand}:{hand:Hand}){
       <button className="modal-close icon-button" aria-label="閉じる" onClick={()=>dialog.current?.close()}><X size={20}/></button>
       <h2 id="single-export-title">このハンドを出力</h2>
       <p>{prepared?.label}{prepared?.demo?' · 架空のデモデータ':''}</p>
-      <p>GTOWizardの「Upload → Single Hand」に貼り付けるための英語のPokerStars互換テキストです。取り込み検証は未実施です。</p>
+      <p>GTOWizardの「Upload → Single Hand」に貼り付けるための英語のPokerStars互換テキストです。{GTO_IMPORT_STATUS}</p>
       <label htmlFor="single-hand-text">ハンド履歴テキスト（1件）</label>
       <textarea ref={field} id="single-hand-text" readOnly spellCheck={false} value={prepared?.text??''} onFocus={e=>e.currentTarget.select()}/>
       <div className="button-row"><button className="button primary" onClick={()=>void copy()}><Copy size={16}/>テキストをコピー</button><button className="button secondary" onClick={download}><Download size={16}/>この1件をダウンロード</button></div>

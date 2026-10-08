@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "TenFour Analyzer",
+  "version": "0.1.0",
+  "minimum_chrome_version": "111",
+  "description": "TenFourのプレイを端末内に記録し、履歴の閲覧とPokerStars互換出力を行います。",
+  "permissions": ["storage"],
+  "background": {"service_worker": "background.js", "type": "module"},
+  "action": {"default_title": "TenFour Analyzerを開く"},
+  "content_scripts": [
+    {"matches": ["https://tenfour-poker.com/*"], "js": ["bridge.js"], "run_at": "document_start", "world": "ISOLATED"},
+    {"matches": ["https://tenfour-poker.com/*"], "js": ["capture.js"], "run_at": "document_start", "world": "MAIN"}
+  ],
+  "content_security_policy": {"extension_pages": "script-src 'self'; object-src 'none'; connect-src 'self'"}
+}

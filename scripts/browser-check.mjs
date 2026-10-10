@@ -133,10 +133,17 @@ try{
  let bulk=dashboard.getByRole('dialog',{name:'ハンドをエクスポート'});
  await bulk.getByLabel('一括エクスポート済みのハンドを除外する').check();
  await bulk.getByRole('button',{name:'.txt をダウンロード',exact:true}).waitFor();
+ // Simulate canceling the OS save dialog before Chrome allocates a download ID.
+ await dashboard.evaluate(()=>{window.savedDownload=chrome.downloads.download;chrome.downloads.download=async()=>{throw new Error('Download canceled');};});
+ await bulk.getByRole('button',{name:'.txt をダウンロード',exact:true}).click();
+ await bulk.getByRole('status').filter({hasText:'出力済みには記録していません。'}).waitFor();
+ assert.equal(await bulk.getByRole('button',{name:'.txt をダウンロード',exact:true}).isEnabled(),true);
+ assert.equal(await bulk.getByRole('button',{name:'対象の出力済み記録を解除'}).count(),0);
+ await dashboard.evaluate(()=>{chrome.downloads.download=window.savedDownload;delete window.savedDownload;});
  const bulkDownload=dashboard.waitForEvent('download');
  await bulk.getByRole('button',{name:'.txt をダウンロード',exact:true}).click();
  const bulkText=await readFile(await (await bulkDownload).path(),'utf8');assert.equal((bulkText.match(/PokerStars Hand/g)||[]).length,1);
- await bulk.getByRole('status').filter({hasText:'1件のダウンロードを開始しました。'}).waitFor();
+ await bulk.getByRole('status').filter({hasText:'1件の保存が完了しました。'}).waitFor();
  assert.equal(await bulk.getByRole('button',{name:'.txt をダウンロード',exact:true}).isDisabled(),true);
  await dashboard.reload();
  await dashboard.getByRole('button',{name:'エクスポート',exact:true}).click();
@@ -174,9 +181,18 @@ try{
  assert.equal((nextText.match(/PokerStars Hand/g)||[]).length,1);
  assert.match(nextText,/Uncalled bet \(\$2\.00\) returned to Player5/);
  assert.doesNotMatch(nextText,/Dealt to Hero \[9d Jh\]/);
- await bulk.getByRole('status').filter({hasText:'1件のダウンロードを開始しました。'}).waitFor();
+ await bulk.getByRole('status').filter({hasText:'1件の保存が完了しました。'}).waitFor();
  await bulk.getByRole('button',{name:'閉じる',exact:true}).click();
  console.log('PASS: next bulk download includes newly completed hand and excludes previous output and incomplete hands');
+ await dashboard.getByPlaceholder('カード・ID・メモで検索').fill('browser-fast-fold');
+ await dashboard.getByRole('button',{name:'エクスポート',exact:true}).click();
+ bulk=dashboard.getByRole('dialog',{name:'ハンドをエクスポート'});
+ await bulk.getByRole('button',{name:'対象の出力済み記録を解除'}).click();
+ await bulk.getByRole('status').filter({hasText:'対象のハンドの出力済み記録を解除しました。'}).waitFor();
+ assert.equal(await bulk.getByRole('button',{name:'.txt をダウンロード',exact:true}).isEnabled(),true);
+ await bulk.getByRole('button',{name:'閉じる',exact:true}).click();
+ console.log('PASS: canceled save does not mark exported; completed save does; selected export markers can be cleared');
+
  // Drive disconnect/reconnect through native WebSocket events and a fresh capture connection.
  socket.send('42'+JSON.stringify(['fastFoldTableState',{...state,tableId:'browser-reconnect'}]));
  await dashboard.getByPlaceholder('カード・ID・メモで検索').fill('browser-reconnect');

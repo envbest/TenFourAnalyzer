@@ -30,3 +30,10 @@ test('invalid export history rejects the entire backup without partial writes',a
   await assert.rejects(recordBulkExport(['valid','']));
   assert.deepEqual((await bulkExportState()).ids,before.bulkExports);
 });
+
+test('clearing a canceled legacy export preserves other exports and notes',async()=>{
+  const {clearBulkExports}=await import('../src/core/store');
+  await clearBulkExports(['hand-a','unknown']);
+  assert.deepEqual(new Set((await bulkExportState()).ids),new Set(['hand-b','hand-c','hand-d']));
+  assert.equal((await annotations())[0].note,'keep note');
+});

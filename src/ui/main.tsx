@@ -1,13 +1,14 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import {Activity,ArrowDownToLine,ArrowUpRight,Bookmark,Check,ChevronLeft,ChevronRight,ChevronsLeft,ChevronsRight,Database,Download,FileJson,Filter,LayoutDashboard,List,Pause,Play,Search,Settings,ShieldCheck,Spade,Upload,X,AlertCircle,Radio} from 'lucide-react';
-import {bulkExportState,setExcludeBulkExports,recordBulkExport,annotate,annotations,backup,reprocess,initialStatus,listHands,restore,setStatus,status} from '../core/store';
+import {clearBulkExports,bulkExportState,setExcludeBulkExports,recordBulkExport,annotate,annotations,backup,reprocess,initialStatus,listHands,restore,setStatus,status} from '../core/store';
 import {demoHands} from '../core/demo';
 import {GTO_IMPORT_STATUS,money,type Hand,type Annotation,type RecorderStatus} from '../core/types';
 import {validateHand,pokerstars} from '../core/export';
 import {replay} from '../core/replay';
 import {settlementPots} from '../core/pots';
 import './style.css';
+import {completedDownload} from './completedDownload';
 import {SingleHandExport} from './SingleHandExport';
 import {RecorderNotice,recorderState,recorderLabels} from './RecorderNotice';
 const isExtension=typeof chrome!=='undefined'&&!!chrome.runtime?.id;
@@ -53,12 +54,18 @@ function App(){
   const updateNote=async(bookmark?:boolean)=>{if(!hand)return;if(demo){setToast('デモのメモは保存されません');return;}await annotate({id:hand.id,bookmark:bookmark??noteMap.get(hand.id)?.bookmark??false,note});await refresh();};
   const exportHands=()=>run(async()=>{
     const parts=await Promise.all(eligible.map(pokerstars));if(!parts.length)throw new Error('出力可能なハンドがありません');
-    download(`tenfour-${new Date().toISOString().slice(0,10)}${demo?'-DEMO':''}.txt`,parts.join(''),'text/plain');
+    const filename=`tenfour-${new Date().toISOString().slice(0,10)}${demo?'-DEMO':''}.txt`;
+    if(!isExtension){download(filename,parts.join(''),'text/plain');setExportReport('プレビューでは保存完了を確認できないため、出力済みには記録しません。');return;}
+    setExportReport('保存完了を待っています。この画面を開いたまま、保存先を選んでください。');
+    const url=URL.createObjectURL(new Blob([parts.join('')],{type:'text/plain;charset=utf-8'}));
+    try{await completedDownload(chrome.downloads,url,filename);}
+    catch{setExportReport('保存がキャンセルされたか失敗しました。出力済みには記録していません。');return;}
+    finally{URL.revokeObjectURL(url);}
     if(!demo){
       try{await recordBulkExport(eligible.map(h=>h.id));await refresh();}
-      catch{throw new Error('ダウンロードを開始しましたが、出力済みの記録に失敗しました。次回も同じハンドが対象になる可能性があります。');}
+      catch{throw new Error('ファイルは保存されましたが、出力済みの記録に失敗しました。次回も同じハンドが対象になる可能性があります。');}
     }
-    setExportReport(`${parts.length}件のダウンロードを開始しました。${selectedHands.length-parts.length}件は出力済み・データ不足などで除外しました。${GTO_IMPORT_STATUS}`);
+    setExportReport(`${parts.length}件の保存が完了しました。${selectedHands.length-parts.length}件は出力済み・データ不足などで除外しました。${GTO_IMPORT_STATUS}`);
   });
   return <div className="app">
     <aside className="sidebar"><a href="#" className="brand" onClick={e=>{e.preventDefault();setTab('hands');}}><span className="brand-icon"><Spade size={24} fill="currentColor"/></span><span>TENFOUR<span className="brand-sub">ANALYZER</span></span></a>
@@ -101,7 +108,7 @@ function App(){
     </main>
     <input ref={upload} type="file" accept="application/json,.json" className="hidden" onChange={e=>{const file=e.target.files?.[0];if(file)void run(async()=>{if(file.size>100_000_000)throw new Error('バックアップは100 MB以下にしてください');const report=await restore(JSON.parse(await file.text()));await refresh();setToast(`ハンド ${report.hands} 件・イベント ${report.events} 件・メモ ${report.annotations} 件を復元しました（既存ハンド ${report.skippedHands} 件を維持）`);});e.target.value='';}}/>
     {toast&&<div className="toast" role="status"><Check size={17}/>{toast}</div>}
-    {showExport&&<div className="modal-overlay" onClick={()=>setShowExport(false)}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="export-title" onClick={e=>e.stopPropagation()}><button className="modal-close icon-button" aria-label="閉じる" onClick={()=>setShowExport(false)}><X size={20}/></button><div className="modal-icon"><FileJson size={28}/></div><h2 id="export-title">ハンドをエクスポート</h2><p>英語のPokerStars互換テキストとして保存します。{demo&&'現在は架空のデモデータです。'}</p>{!demo&&<label className="export-option"><input type="checkbox" checked={bulkExports.exclude} disabled={busy} onChange={e=>{const value=e.currentTarget.checked;setBulkExports(old=>({...old,exclude:value}));void run(async()=>{try{await setExcludeBulkExports(value);}catch(error){await refresh();throw error;}});}}/>一括エクスポート済みのハンドを除外する</label>}<p className="muted">{!demo&&`一括出力済みによる除外：${skippedExported} 件。`}ダウンロード開始時に出力済みとして記録します。保存をキャンセルした場合や再出力したい場合は、除外をオフにしてください。単体出力は出力済みに含めません。{demo&&'デモの出力履歴は保存しません。'}</p><div className="export-count"><strong>{eligible.length}</strong><span>出力可能 / 対象 {selectedHands.length} 件</span></div><p className="muted">{checked.size?'選択したハンド':'現在の絞り込み結果'}が対象です。データ不足のハンドは除外します。{GTO_IMPORT_STATUS}</p>{selectedHands.length>eligible.length&&<details className="issues"><summary>除外されるハンドの理由</summary><ul>{selectedHands.filter(h=>alreadyExported(h)||validateHand(h).length).map(h=><li key={h.id}>{h.sourceId??h.tableId}: {alreadyExported(h)?'一括エクスポート済み':validateHand(h).join(' / ')}</li>)}</ul></details>}<button className="button primary full" disabled={!eligible.length||busy} onClick={()=>void exportHands()}><Download size={17}/>{busy?'作成中…':'.txt をダウンロード'}</button>{exportReport&&<p role="status" className="export-report">{exportReport}</p>}</section></div>}
+    {showExport&&<div className="modal-overlay" onClick={()=>setShowExport(false)}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="export-title" onClick={e=>e.stopPropagation()}><button className="modal-close icon-button" aria-label="閉じる" onClick={()=>setShowExport(false)}><X size={20}/></button><div className="modal-icon"><FileJson size={28}/></div><h2 id="export-title">ハンドをエクスポート</h2><p>英語のPokerStars互換テキストとして保存します。{demo&&'現在は架空のデモデータです。'}</p>{!demo&&<label className="export-option"><input type="checkbox" checked={bulkExports.exclude} disabled={busy} onChange={e=>{const value=e.currentTarget.checked;setBulkExports(old=>({...old,exclude:value}));void run(async()=>{try{await setExcludeBulkExports(value);}catch(error){await refresh();throw error;}});}}/>一括エクスポート済みのハンドを除外する</label>}<p className="muted">{!demo&&`一括出力済みによる除外：${skippedExported} 件。`}保存完了を確認してから出力済みとして記録します。キャンセル・失敗した場合は記録しません。再出力したい場合は除外をオフにしてください。単体出力は出力済みに含めません。{demo&&'デモの出力履歴は保存しません。'}</p>{!demo&&selectedHands.some(h=>exportedIds.has(h.id))&&<button className="button secondary" disabled={busy} onClick={()=>void run(async()=>{await clearBulkExports(selectedHands.map(h=>h.id));await refresh();setExportReport('対象のハンドの出力済み記録を解除しました。ハンド自体は削除していません。');})}>対象の出力済み記録を解除</button>}<div className="export-count"><strong>{eligible.length}</strong><span>出力可能 / 対象 {selectedHands.length} 件</span></div><p className="muted">{checked.size?'選択したハンド':'現在の絞り込み結果'}が対象です。データ不足のハンドは除外します。{GTO_IMPORT_STATUS}</p>{selectedHands.length>eligible.length&&<details className="issues"><summary>除外されるハンドの理由</summary><ul>{selectedHands.filter(h=>alreadyExported(h)||validateHand(h).length).map(h=><li key={h.id}>{h.sourceId??h.tableId}: {alreadyExported(h)?'一括エクスポート済み':validateHand(h).join(' / ')}</li>)}</ul></details>}<button className="button primary full" disabled={!eligible.length||busy} onClick={()=>void exportHands()}><Download size={17}/>{busy?'作成中…':'.txt をダウンロード'}</button>{exportReport&&<p role="status" className="export-report">{exportReport}</p>}</section></div>}
   </div>;
 }
 function ProfitChart({hands}:{hands:Hand[]}){const values=[0];for(const h of [...hands].sort((a,b)=>a.startedAt-b.startedAt))values.push(values.at(-1)!+(h.profit??0));const min=Math.min(...values,0),max=Math.max(...values,100),range=max-min||1;const points=values.map((v,i)=>`${30+i/Math.max(1,values.length-1)*900},${170-(v-min)/range*140}`).join(' ');return hands.length?<svg className="chart" viewBox="0 0 960 210" role="img" aria-label={`${hands.length}件のハンドの累積収支`}><defs><linearGradient id="area" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#22856c" stopOpacity=".16"/><stop offset="100%" stopColor="#22856c" stopOpacity="0"/></linearGradient></defs>{[30,100,170].map(y=><line key={y} x1="30" x2="930" y1={y} y2={y} stroke="#e6eae6" strokeDasharray="4 4"/>)}<polygon points={`30,180 ${points} 930,180`} fill="url(#area)"/><polyline points={points} fill="none" stroke="#22856c" strokeWidth="3"/><text x="30" y="202" fill="#7a8580">0 hands</text><text x="850" y="202" fill="#7a8580">{hands.length} hands</text></svg>:<p className="chart-empty">終了したハンドを記録すると、収支の推移を表示します。</p>;}

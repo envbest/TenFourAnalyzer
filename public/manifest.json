@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "minimum_chrome_version": "111",
   "description": "TenFourのプレイを端末内に記録し、履歴の閲覧とPokerStars互換出力を行います。",
-  "permissions": ["storage"],
+  "permissions": ["storage", "downloads"],
   "background": {"service_worker": "background.js", "type": "module"},
   "action": {"default_title": "TenFour Analyzerを開く"},
   "content_scripts": [

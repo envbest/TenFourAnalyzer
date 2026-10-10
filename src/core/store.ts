@@ -58,6 +58,11 @@ export async function recordBulkExport(ids:string[]){
   try{const old=await result<string[]|undefined>(store.get('bulkExports'));store.put([...new Set([...(old??[]),...ids])],'bulkExports');await end;}
   catch(error){try{tx.abort();}catch{}await end.catch(()=>{});throw error;}
 }
+export async function clearBulkExports(ids:string[]){
+  const remove=new Set(ids),db=await database(),tx=db.transaction('meta','readwrite'),end=done(tx),store=tx.objectStore('meta');
+  try{const old=await result<string[]|undefined>(store.get('bulkExports'));store.put((old??[]).filter(id=>!remove.has(id)),'bulkExports');await end;}
+  catch(error){try{tx.abort();}catch{}await end.catch(()=>{});throw error;}
+}
 export async function backup(){
   const db=await database(),tx=db.transaction(['events','hands','annotations','meta']);
   const [events,hands,notes,bulkExports]=await Promise.all([result(tx.objectStore('events').getAll()),result(tx.objectStore('hands').getAll()),result(tx.objectStore('annotations').getAll()),result<string[]|undefined>(tx.objectStore('meta').get('bulkExports'))]);

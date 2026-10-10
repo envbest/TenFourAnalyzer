@@ -128,6 +128,28 @@ try{
  assert.equal(await revealed.locator('.revealed-player').count(),6);
  assert.equal(await revealed.locator('.card').count(),12);
  console.log('PASS: single-hand clipboard and download, clipboard denial fallback, incomplete export guard, observed settlement and all six revealed hands');
+ // Single-hand output above must not mark a hand as bulk exported.
+ await dashboard.getByRole('button',{name:'エクスポート',exact:true}).click();
+ let bulk=dashboard.getByRole('dialog',{name:'ハンドをエクスポート'});
+ await bulk.getByLabel('一括エクスポート済みのハンドを除外する').check();
+ await bulk.getByRole('button',{name:'.txt をダウンロード',exact:true}).waitFor();
+ const bulkDownload=dashboard.waitForEvent('download');
+ await bulk.getByRole('button',{name:'.txt をダウンロード',exact:true}).click();
+ const bulkText=await readFile(await (await bulkDownload).path(),'utf8');assert.equal((bulkText.match(/PokerStars Hand/g)||[]).length,1);
+ await bulk.getByRole('status').filter({hasText:'1件のダウンロードを開始しました。'}).waitFor();
+ assert.equal(await bulk.getByRole('button',{name:'.txt をダウンロード',exact:true}).isDisabled(),true);
+ await dashboard.reload();
+ await dashboard.getByRole('button',{name:'エクスポート',exact:true}).click();
+ bulk=dashboard.getByRole('dialog',{name:'ハンドをエクスポート'});
+ assert.equal(await bulk.getByLabel('一括エクスポート済みのハンドを除外する').isChecked(),true);
+ assert.equal(await bulk.getByRole('button',{name:'.txt をダウンロード',exact:true}).isDisabled(),true);
+ await bulk.getByLabel('一括エクスポート済みのハンドを除外する').uncheck();
+ await bulk.getByRole('button',{name:'.txt をダウンロード',exact:true}).waitFor();
+ await dashboard.waitForFunction(()=>!document.querySelector('.modal [class*=primary]')?.disabled);
+ assert.equal(await bulk.getByRole('button',{name:'.txt をダウンロード',exact:true}).isEnabled(),true);
+ await bulk.getByRole('button',{name:'閉じる',exact:true}).click();
+ console.log('PASS: bulk export excludes previously downloaded hands after reload, single export does not mark, opt-out allows repeat export');
+
  const folded=JSON.parse(await readFile('tests/fixtures/observed-fast-fold.json','utf8'));
  for(const e of folded.slice(0,2))socket.send('42'+JSON.stringify([e.event,{...e.payload,tableId:'browser-fast-fold'}]));
  socket.send('42'+JSON.stringify(['fastFoldTableRemoved',{tableId:'browser-fast-fold'}]));
@@ -142,6 +164,19 @@ try{
  await dashboard.getByRole('button',{name:'このハンドを出力',exact:true}).click();
  assert.match(await dashboard.getByLabel('ハンド履歴テキスト（1件）').inputValue(),/Uncalled bet \(\$2\.00\) returned to Player5/);
  await dashboard.getByRole('dialog').getByRole('button',{name:'閉じる',exact:true}).click();
+ await dashboard.getByPlaceholder('カード・ID・メモで検索').fill('');
+ await dashboard.getByRole('button',{name:'エクスポート',exact:true}).click();
+ bulk=dashboard.getByRole('dialog',{name:'ハンドをエクスポート'});
+ await bulk.getByLabel('一括エクスポート済みのハンドを除外する').check();
+ const nextDownload=dashboard.waitForEvent('download');
+ await bulk.getByRole('button',{name:'.txt をダウンロード',exact:true}).click();
+ const nextText=await readFile(await (await nextDownload).path(),'utf8');
+ assert.equal((nextText.match(/PokerStars Hand/g)||[]).length,1);
+ assert.match(nextText,/Uncalled bet \(\$2\.00\) returned to Player5/);
+ assert.doesNotMatch(nextText,/Dealt to Hero \[9d Jh\]/);
+ await bulk.getByRole('status').filter({hasText:'1件のダウンロードを開始しました。'}).waitFor();
+ await bulk.getByRole('button',{name:'閉じる',exact:true}).click();
+ console.log('PASS: next bulk download includes newly completed hand and excludes previous output and incomplete hands');
  // Drive disconnect/reconnect through native WebSocket events and a fresh capture connection.
  socket.send('42'+JSON.stringify(['fastFoldTableState',{...state,tableId:'browser-reconnect'}]));
  await dashboard.getByPlaceholder('カード・ID・メモで検索').fill('browser-reconnect');

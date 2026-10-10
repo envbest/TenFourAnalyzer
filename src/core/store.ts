@@ -43,7 +43,26 @@ export async function ingest(input:Capture){
   meta.put({...current,lastSeen:c.at,lastSaved:Date.now(),events:current.events+1,error:null},'status');await end;
   }catch(error){try{tx.abort();}catch{}await end.catch(()=>{});throw error;}
 }
-export async function backup(){const db=await database(),tx=db.transaction(['events','hands','annotations']);const [events,hands,notes]=await Promise.all([result(tx.objectStore('events').getAll()),result(tx.objectStore('hands').getAll()),result(tx.objectStore('annotations').getAll())]);return {format:'tenfour-analyzer',version:1,createdAt:new Date().toISOString(),events,hands,annotations:notes};}
+export async function bulkExportState():Promise<{ids:string[];exclude:boolean}>{
+  const db=await database(),store=db.transaction('meta').objectStore('meta');
+  const [ids,exclude]=await Promise.all([result<string[]|undefined>(store.get('bulkExports')),result<boolean|undefined>(store.get('excludeBulkExports'))]);
+  return {ids:ids??[],exclude:exclude??false};
+}
+export async function setExcludeBulkExports(exclude:boolean){
+  const db=await database(),tx=db.transaction('meta','readwrite'),end=done(tx);
+  tx.objectStore('meta').put(exclude,'excludeBulkExports');await end;
+}
+export async function recordBulkExport(ids:string[]){
+  if(!ids.every(identifier))throw new Error('出力済みハンドIDが不正です');
+  const db=await database(),tx=db.transaction('meta','readwrite'),end=done(tx),store=tx.objectStore('meta');
+  try{const old=await result<string[]|undefined>(store.get('bulkExports'));store.put([...new Set([...(old??[]),...ids])],'bulkExports');await end;}
+  catch(error){try{tx.abort();}catch{}await end.catch(()=>{});throw error;}
+}
+export async function backup(){
+  const db=await database(),tx=db.transaction(['events','hands','annotations','meta']);
+  const [events,hands,notes,bulkExports]=await Promise.all([result(tx.objectStore('events').getAll()),result(tx.objectStore('hands').getAll()),result(tx.objectStore('annotations').getAll()),result<string[]|undefined>(tx.objectStore('meta').get('bulkExports'))]);
+  return {format:'tenfour-analyzer',version:1,createdAt:new Date().toISOString(),events,hands,annotations:notes,bulkExports:bulkExports??[]};
+}
 const object=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
 const identifier=(v:unknown)=>typeof v==='string'&&v.length>0&&v.length<300;
 const integer=(v:unknown)=>typeof v==='number'&&Number.isSafeInteger(v);
@@ -80,6 +99,7 @@ export async function restore(value:unknown):Promise<RestoreReport>{
   const b=value as Awaited<ReturnType<typeof backup>>;
   const unique=(rows:{id:string}[])=>new Set(rows.map(r=>r.id)).size===rows.length;
   if(!b||b.format!=='tenfour-analyzer'||b.version!==1||!Array.isArray(b.hands)||!Array.isArray(b.events)||!Array.isArray(b.annotations)||b.hands.length>100000||b.events.length>500000||b.annotations.length>100000||!b.hands.every(validHandShape)||!b.events.every(validCapture)||!b.annotations.every(a=>a&&identifier(a.id)&&typeof a.note==='string'&&a.note.length<=10000&&typeof a.bookmark==='boolean')||![b.hands,b.events,b.annotations].every(unique))throw new Error('対応するバックアップ形式ではありません');
+  if(b.bulkExports!==undefined&&(!Array.isArray(b.bulkExports)||b.bulkExports.length>100000||!b.bulkExports.every(identifier)))throw new Error('対応するバックアップ形式ではありません');
   const cleaned=b.events.map(e=>({...e,payload:sanitize(e.payload)}));
   const db=await database(),tx=db.transaction(['events','hands','annotations','meta'],'readwrite'),end=done(tx);
   const report:RestoreReport={hands:0,events:0,annotations:0,skippedHands:0};
@@ -88,6 +108,8 @@ export async function restore(value:unknown):Promise<RestoreReport>{
     for(const e of cleaned){if(!await result(events.get(e.id))){events.add(e);report.events++;}}
     for(const h of b.hands){const old=await result<Hand|undefined>(hands.get(h.id));if(!old||h.updatedAt>old.updatedAt){hands.put(h);report.hands++;}else report.skippedHands++;}
     for(const a of b.annotations){if(!await result(notes.get(a.id))){notes.add(a);report.annotations++;}}
+    const previousExports=await result<string[]|undefined>(meta.get('bulkExports'));
+    meta.put([...new Set([...(previousExports??[]),...(b.bulkExports??[])])],'bulkExports');
     const current:RecorderStatus=await result(meta.get('status'))??initialStatus;
     meta.put({...current,events:await result(events.count())},'status');
     await end;return report;
